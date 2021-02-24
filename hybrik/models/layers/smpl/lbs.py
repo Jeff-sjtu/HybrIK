@@ -600,7 +600,7 @@ def batch_inverse_kinematics_transform(
     phis = phis / (torch.norm(phis, dim=2, keepdim=True) + 1e-8)
 
     # TODO
-    if train or True:
+    if False:
         global_orient_mat = batch_get_pelvis_orient(
             rel_pose_skeleton.clone(), rel_rest_pose.clone(), parents, children, dtype)
     else:
@@ -710,9 +710,18 @@ def batch_get_pelvis_orient_svd(rel_pose_skeleton, rel_rest_pose, parents, child
     target_mat = torch.cat(target_mat, dim=2)
     S = rest_mat.bmm(target_mat.transpose(1, 2))
 
-    U, _, V = torch.svd(S)
+    mask_zero = S.sum(dim=(1, 2))
 
-    rot_mat = torch.bmm(V, U.transpose(1, 2))
+    S_non_zero = S[mask_zero != 0].reshape(-1, 3, 3)
+
+    U, _, V = torch.svd(S_non_zero)
+
+    rot_mat = torch.zeros_like(S)
+    rot_mat[mask_zero == 0] = torch.eye(3, device=S.device)
+
+    rot_mat_non_zero = torch.bmm(V, U.transpose(1, 2))
+    rot_mat[mask_zero != 0] = rot_mat_non_zero
+
     assert torch.sum(torch.isnan(rot_mat)) == 0, ('rot_mat', rot_mat)
 
     return rot_mat
