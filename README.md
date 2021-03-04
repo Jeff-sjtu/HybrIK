@@ -5,7 +5,7 @@ This repo contains the code of our paper:
 
 **HybrIK: A Hybrid Analytical-Neural Inverse Kinematics Solution for 3D Human Pose and Shape Estimation**
 
-[Jiefeng Li](http://jeffli.site/HybrIK/), [Chao Xu](https://www.isdas.cn/), Zhicun Chen, Siyuan Bian, [Cewu Lu](http://mvig.org/)
+[Jiefeng Li](http://jeffli.site/HybrIK/), [Chao Xu](https://www.isdas.cn/), [Zhicun Chen](https://github.com/chenzhicun), [Siyuan Bian](https://github.com/biansy000), [Cewu Lu](http://mvig.org/)
 
 [[`arXiv`](https://arxiv.org/abs/2011.14672)]
 [[`Project Page`](http://jeffli.site/HybrIK/)]
