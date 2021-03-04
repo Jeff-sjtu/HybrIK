@@ -118,10 +118,10 @@
 
 <html>
 <head>
-	<title>This is my paper title</title>
+	<title>HybrIK: A Hybrid Analytical-Neural Inverse Kinematics Solution for 3D Human Pose and Shape Estimation</title>
 	<meta property="og:image" content="Path to my teaser.png"/> <!-- Facebook automatically scrapes this. Go to https://developers.facebook.com/tools/debug/ if you update and want to force Facebook to rescrape. -->
-	<meta property="og:title" content="Creative and Descriptive Paper Title." />
-	<meta property="og:description" content="Paper description." />
+	<meta property="og:title" content="HybrIK: A Hybrid Analytical-Neural Inverse Kinematics Solution for 3D Human Pose and Shape Estimation" />
+	<meta property="og:description" content="A Hybrid Analytical-Neural Inverse Kinematics Solution." />
 
 	<!-- Get from Google Analytics -->
 	<!-- Global site tag (gtag.js) - Google Analytics -->
@@ -138,23 +138,37 @@
 <body>
 	<br>
 	<center>
-		<span style="font-size:36px">Creative and Descriptive Paper Title</span>
+		<span style="font-size:36px">HybrIK: A Hybrid Analytical-Neural Inverse Kinematics Solution for 3D Human Pose and Shape Estimation</span>
 		<table align=center width=600px>
 			<table align=center width=600px>
 				<tr>
 					<td align=center width=100px>
 						<center>
-							<span style="font-size:24px"><a href="https://en.wikipedia.org/wiki/James_J._Gibson">First Author</a></span>
+							<span style="font-size:24px"><a href="https://jeffli.site">Jiefeng Li</a></span>
 						</center>
 					</td>
 					<td align=center width=100px>
 						<center>
-							<span style="font-size:24px"><a href="https://en.wikipedia.org/wiki/James_J._Gibson">Second Author</a></span>
+							<span style="font-size:24px"><a>Chao Xu</a></span>
 						</center>
 					</td>
 					<td align=center width=100px>
 						<center>
-							<span style="font-size:24px"><a href="https://en.wikipedia.org/wiki/James_J._Gibson">Third Author</a></span>
+							<span style="font-size:24px"><a>Zhicun Chen</a></span>
+						</center>
+					</td>
+				</tr>
+			</table>
+			<table align=center width=600px>
+				<tr>
+					<td align=center width=100px>
+						<center>
+							<span style="font-size:24px"><a>Siyuan Bian</a></span>
+						</center>
+					</td>
+					<td align=center width=100px>
+						<center>
+							<span style="font-size:24px"><a>Cewu Lu</a></span>
 						</center>
 					</td>
 				</tr>
@@ -163,12 +177,12 @@
 				<tr>
 					<td align=center width=120px>
 						<center>
-							<span style="font-size:24px"><a href=''>[Paper]</a></span>
+							<span style="font-size:24px"><a href='https://arxiv.org/abs/2011.14672'>[Paper]</a></span>
 						</center>
 					</td>
 					<td align=center width=120px>
 						<center>
-							<span style="font-size:24px"><a href='https://github.com/richzhang/webpage-template'>[GitHub]</a></span><br>
+							<span style="font-size:24px"><a href='https://github.com/Jeff-sjtu/HybrIK'>[Code]</a></span><br>
 						</center>
 					</td>
 				</tr>
@@ -179,17 +193,8 @@
 	<center>
 		<table align=center width=850px>
 			<tr>
-				<td width=260px>
-					<center>
-						<img class="round" style="width:500px" src="./resources/teaser.png"/>
-					</center>
-				</td>
-			</tr>
-		</table>
-		<table align=center width=850px>
-			<tr>
 				<td>
-					This was a template originally made for <a href="http://richzhang.github.io/colorization/">Colorful Image Colorization</a>. The code can be found in this <a href="https://github.com/richzhang/webpage-template">repository</a>.
+					This page is under building.
 				</td>
 			</tr>
 		</table>
@@ -201,74 +206,33 @@
 		<center><h1>Abstract</h1></center>
 		<tr>
 			<td>
-				This is my abstract.
+				Model-based 3D pose and shape estimation methods reconstruct a full 3D mesh for the human body by estimating several
+				parameters. However, learning the abstract parameters is a highly non-linear process and suffers from image-model
+				misalignment, leading to mediocre model performance. In contrast, 3D keypoint estimation methods combine deep CNN
+				network with the volumetric representation to achieve pixel-level localization accuracy but may predict unrealistic body
+				structure. In this paper, we address the above issues by bridging the gap between body mesh estimation and 3D keypoint
+				estimation. We propose a novel hybrid inverse kinematics solution (HybrIK). HybrIK directly transforms accurate 3D
+				joints to relative body-part rotations for 3D body mesh reconstruction, via the twist-and-swing decomposition. The swing
+				rotation is analytically solved with 3D joints, and the twist rotation is derived from the visual cues through the
+				neural network. We show that HybrIK preserves both the accuracy of 3D pose and the realistic body structure of the
+				parametric human model, leading to a pixel-aligned 3D body mesh and a more accurate 3D pose than the pure 3D keypoint
+				estimation methods. Without bells and whistles, the proposed method surpasses the state-of-the-art methods by a large
+				margin on various 3D human pose and shape benchmarks. As an illustrative example, HybrIK outperforms all the previous
+				methods by 13.2 mm MPJPE and 21.9 mm PVE on 3DPW dataset.
 			</td>
 		</tr>
 	</table>
 	<br>
 
-	<hr>
-	<center><h1>Talk</h1></center>
-	<p align="center">
-		<iframe width="660" height="395" src="https://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen align="center"></iframe>
-	</p>
-
-	<table align=center width=800px>
-		<br>
-		<tr>
-			<center>
-				<span style="font-size:28px"><a href=''>[Slides]</a>
-				</span>
-			</center>
-		</tr>
-	</table>
-	<hr>
-
-	<center><h1>Code</h1></center>
-
-	<table align=center width=420px>
-		<center>
-			<tr>
-				<td>
-				</td>
-			</tr>
-		</center>
-	</table>
-	<table align=center width=400px>
-		<tr>
-			<td align=center width=400px>
-				<center>
-					<td><img class="round" style="width:450px" src="./resources/method_diagram.png"/></td>
-				</center>
-			</td>
-		</tr>
-	</table>
-	<table align=center width=850px>
-		<center>
-			<tr>
-				<td>
-					Short description if wanted
-				</td>
-			</tr>
-		</center>
-	</table>
-	<table align=center width=800px>
-		<br>
-		<tr><center>
-			<span style="font-size:28px">&nbsp;<a href='https://github.com/richzhang/webpage-template'>[GitHub]</a>
-			</center>
-		</span>
-	</table>
 	<br>
 	<hr>
 	<table align=center width=450px>
 		<center><h1>Paper and Supplementary Material</h1></center>
 		<tr>
-			<td><a href=""><img class="layered-paper-big" style="height:175px" src="./resources/paper.png"/></a></td>
-			<td><span style="font-size:14pt">F. Author, S. Author, T. Author.<br>
-				<b>Creative and Descriptive Paper Title.</b><br>
-				In Conference, 20XX.<br>
-				(hosted on <a href="">ArXiv</a>)<br>
+			<td><a href=""><img class="layered-paper-big" style="height:175px" src="./resources/hybrik-paper.png"/></a></td>
+			<td><span style="font-size:14pt">Jiefeng Li, Chao Xu, Zhicun Chen, Siyuan Bian, Cewu Lu<br>
+				<b>HybrIK: A Hybrid Analytical-Neural Inverse Kinematics Solution for 3D Human Pose and Shape Estimation</b><br>
+				In CVPR, 2021.<br>
 				<!-- (<a href="./resources/camera-ready.pdf">camera ready</a>)<br> -->
 				<span style="font-size:4pt"><a href=""><br></a>
 				</span>
