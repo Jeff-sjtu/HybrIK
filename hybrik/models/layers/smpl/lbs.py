@@ -600,7 +600,7 @@ def batch_inverse_kinematics_transform(
     phis = phis / (torch.norm(phis, dim=2, keepdim=True) + 1e-8)
 
     # TODO
-    if False:
+    if train:
         global_orient_mat = batch_get_pelvis_orient(
             rel_pose_skeleton.clone(), rel_rest_pose.clone(), parents, children, dtype)
     else:

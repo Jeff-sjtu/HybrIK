@@ -4,6 +4,8 @@
 This repo contains the code of our paper:
 
 [HybrIK: A Hybrid Analytical-Neural Inverse Kinematics Solution for 3D Human Pose and Shape Estimation](https://arxiv.org/abs/2011.14672)
+> Jiefeng Li, Chao Xu, Zhicun Chen, Siyuan Bian, Cewu Lu    
+> CVPR 2021
 
 ![hybrik](hybrik.png)
 
@@ -63,9 +65,9 @@ Download *Human3.6M*, *MPI-INF-3DHP*, *3DPW* and *MSCOCO* datasets. You need to 
 ## Citing
 If our code helps your research, please consider citing the following paper:
 
-    @article{li2020hybrik,
-    title={HybrIK: A Hybrid Analytical-Neural Inverse Kinematics Solution for 3D Human Pose and Shape Estimation},
-    author={Li, Jiefeng and Xu, Chao and Chen, Zhicun and Bian, Siyuan and Yang, Lixin and Lu, Cewu},
-    journal={arXiv preprint arXiv:2011.14672},
-    year={2020}
+    @inproceedings{li2020hybrik,
+        title={HybrIK: A Hybrid Analytical-Neural Inverse Kinematics Solution for 3D Human Pose and Shape Estimation},
+        author={Li, Jiefeng and Xu, Chao and Chen, Zhicun and Bian, Siyuan and Yang, Lixin and Lu, Cewu},
+        booktitle={CVPR},
+        year={2021}
     }
