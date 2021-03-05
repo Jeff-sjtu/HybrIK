@@ -8,7 +8,7 @@ This repo contains the code of our paper:
 [Jiefeng Li](http://jeffli.site/HybrIK/), [Chao Xu](https://www.isdas.cn/), [Zhicun Chen](https://github.com/chenzhicun), [Siyuan Bian](https://github.com/biansy000), [Lixin Yang](https://lixiny.github.io/), [Cewu Lu](http://mvig.org/)
 
 [[`arXiv`](https://arxiv.org/abs/2011.14672)]
-[[`Project Page`](http://jeffli.site/HybrIK/)]
+[[`Project Page`](https://jeffli.site/HybrIK/)]
 
 In CVPR 2021
 
