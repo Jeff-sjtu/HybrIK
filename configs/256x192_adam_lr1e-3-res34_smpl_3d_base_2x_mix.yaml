@@ -2,13 +2,12 @@ DATASET:
   DATASET: 'mix_smpl'
   SET_LIST:
     - ROOT: './data/h36m/'
-      TEST_SET: 'annotation_h36m_mini'
-      # TRAIN_SET: 'Sample_5_train_Human36M_smpl_leaf_twist'
-      TRAIN_SET: 'annotation_h36m_mini'
+      TEST_SET: 'Sample_20_test_Human36M_smpl'
+      TRAIN_SET: 'Sample_5_train_Human36M_smpl_leaf_twist'
     - ROOT: './data/coco/'
       TRAIN_SET: 'train2017'
     - ROOT: './data/3dhp/'
-      TRAIN_SET: 'train_mini'
+      TRAIN_SET: 'train_v2'
   PROTOCOL: 2
   FLIP: True
   ROT_FACTOR: 30
@@ -27,7 +26,7 @@ MODEL:
   HEATMAP_SIZE:
   - 64
   - 64
-  NUM_JOINTS: 24
+  NUM_JOINTS: 29
   NUM_DECONV_FILTERS:
   - 256
   - 256

@@ -227,7 +227,7 @@ def main_worker(gpu, opt, cfg):
 
     gt_val_dataset_h36m = H36mSMPL(
         cfg=cfg,
-        ann_file='Sample_validmin_test_Human36M',
+        ann_file='Sample_20_test_Human36M_smpl',
         train=False)
 
     gt_val_dataset_3dpw = PW3D(

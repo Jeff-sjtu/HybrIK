@@ -16,7 +16,7 @@ In CVPR 2021
 
 ## TODO
 - [ ] Provide pretrained model
-- [ ] Provide parsed data annotations
+- [x] Provide parsed data annotations
 
 ## Installation instructions
 
@@ -36,6 +36,10 @@ cd HybrIK
 python setup.py develop
 ```
 
+## Download models
+* Download the SMPL model `basicModel_neutral_lbs_10_207_0_v1.0.0.pkl` from [here](https://smpl.is.tue.mpg.de/) at `common/utils/smplpytorch/smplpytorch/native/models`.
+* Download our pretrained model from [ [Google Drive]() | [Baidu]() ].
+
 ## Fetch data
 Download *Human3.6M*, *MPI-INF-3DHP*, *3DPW* and *MSCOCO* datasets. You need to follow directory structure of the `data` as below.
 ```
@@ -50,9 +54,9 @@ Download *Human3.6M*, *MPI-INF-3DHP*, *3DPW* and *MSCOCO* datasets. You need to 
         |-- train2017
         `-- val2017
 ```
-* Download Human3.6M parsed data. *(WIP)*
-* Download 3DPW parsed data. *(WIP)*
-* Download MPI-INF-3DHP parsed data. *(WIP)*
+* Download Human3.6M parsed annotations. [ [Google](https://drive.google.com/drive/folders/1tLA_XeZ_32Qk86lR06WJhJJXDYrlBJ9r?usp=sharing) | [Baidu](https://pan.baidu.com/s/1bqfVOlQWX0Rfc0Yl1a5VRA) ]
+* Download 3DPW parsed annotations. [ [Google](https://drive.google.com/file/d/1ICr1yIPKOtLn3LsTmcytvE-ZFokPsaw5/view?usp=sharing) | [Baidu](https://pan.baidu.com/s/1d42QyQmMONJgCJvHIU2nsA) ]
+* Download MPI-INF-3DHP parsed annotations. [ [Google](https://drive.google.com/file/d/1TUZMX4n3ofk4fR0GuZWUj_yD2tcU27y3/view?usp=sharing) | [Baidu](https://pan.baidu.com/s/107swRgV4lMq-0y-UvqYbuw) ]
 
 
 ## Train from scratch

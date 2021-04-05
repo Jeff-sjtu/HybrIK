@@ -36,7 +36,7 @@ class Simple3DPoseBaseSMPL(nn.Module):
         super(Simple3DPoseBaseSMPL, self).__init__()
         self.deconv_dim = kwargs['NUM_DECONV_FILTERS']
         self._norm_layer = norm_layer
-        self.num_joints = 29
+        self.num_joints = kwargs['NUM_JOINTS']
         self.norm_type = kwargs['POST']['NORM_TYPE']
         self.depth_dim = kwargs['EXTRA']['DEPTH_DIM']
         self.height_dim = kwargs['HEATMAP_SIZE'][0]
