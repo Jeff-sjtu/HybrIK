@@ -17,7 +17,7 @@ In CVPR 2021
 
 <div align="center">
     <img src="decompose.gif", width="600" alt><br>
-    Twist-and-Swing Decompose
+    Twist-and-Swing Decomposition
 </div>
 
 ## TODO
