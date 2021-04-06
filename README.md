@@ -14,6 +14,12 @@ In CVPR 2021
 
 ![hybrik](hybrik.png)
 
+
+<div align="center">
+    <img src="decompose.gif", width="600" alt><br>
+    Twist-and-Swing Decompose
+</div>
+
 ## TODO
 - [ ] Provide pretrained model
 - [x] Provide parsed data annotations
