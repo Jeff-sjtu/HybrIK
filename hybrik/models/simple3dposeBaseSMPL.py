@@ -333,3 +333,14 @@ class Simple3DPoseBaseSMPL(nn.Module):
             maxvals=maxvals
         )
         return output
+
+    def forward_gt_theta(self, gt_theta, gt_beta):
+
+        output = self.smpl(
+            pose_axis_angle=gt_theta,
+            betas=gt_beta,
+            global_orient=None,
+            return_verts=True
+        )
+
+        return output
