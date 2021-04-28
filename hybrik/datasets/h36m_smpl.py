@@ -346,7 +346,7 @@ class H36mSMPL(data.Dataset):
             gt_3d_kpt = gt['joint_cam_29'][:24].copy()
 
             # restore coordinates to original space
-            pred_2d_kpt = preds[image_id]['uvd_29'][:24].copy()
+            pred_2d_kpt = preds[image_id]['uvd_jts'][:24].copy()
             # pred_2d_kpt[:, 0] = pred_2d_kpt[:, 0] / self._output_size[1] * bbox[2] + bbox[0]
             # pred_2d_kpt[:, 1] = pred_2d_kpt[:, 1] / self._output_size[0] * bbox[3] + bbox[1]
             pred_2d_kpt[:, 2] = pred_2d_kpt[:, 2] * self.bbox_3d_shape[2] + gt_3d_root[2]

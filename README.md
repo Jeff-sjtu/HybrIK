@@ -21,7 +21,7 @@ In CVPR 2021
 </div>
 
 ## TODO
-- [ ] Provide pretrained model
+- [x] Provide pretrained model
 - [x] Provide parsed data annotations
 
 ## Installation instructions
@@ -51,8 +51,16 @@ Download *Human3.6M*, *MPI-INF-3DHP*, *3DPW* and *MSCOCO* datasets. You need to 
 ```
 |-- data
 `-- |-- h36m
+    `-- |-- annotations
+        `-- images
 `-- |-- pw3d
+    `-- |-- json
+        `-- imageFiles
 `-- |-- 3dhp
+    `-- |-- annotation_mpi_inf_3dhp_train.json
+        |-- annotation_mpi_inf_3dhp_test.json
+        |-- mpi_inf_3dhp_train_set
+        `-- mpi_inf_3dhp_test_set
 `-- |-- coco
     `-- |-- annotations
         |   |-- person_keypoints_train2017.json
@@ -72,8 +80,9 @@ Download *Human3.6M*, *MPI-INF-3DHP*, *3DPW* and *MSCOCO* datasets. You need to 
 ```
 
 ## Evaluation
+Download [pretrained model](https://drive.google.com/file/d/1SoVJ3dniVpBi2NkYfa2S8XEv0TGIK26l/view?usp=sharing).
 ``` bash
-./scripts/validate_smpl.sh ./configs/256x192_adam_lr1e-3-res34_smpl_3d_base_2x_mix.yaml ${CKPT}
+./scripts/validate_smpl.sh ./configs/256x192_adam_lr1e-3-res34_smpl_24_3d_base_2x_mix.yaml ./pretrained_res34.pth
 ```
 
 

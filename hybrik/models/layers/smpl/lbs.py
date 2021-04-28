@@ -290,7 +290,7 @@ def lbs(betas, pose, v_template, shapedirs, posedirs, J_regressor, J_regressor_h
 
 def hybrik(betas, global_orient, pose_skeleton, phis,
            v_template, shapedirs, posedirs, J_regressor, J_regressor_h36m, parents, children,
-           lbs_weights, dtype=torch.float32, train=False):
+           lbs_weights, dtype=torch.float32, train=False, leaf_thetas=None):
     ''' Performs Linear Blend Skinning with the given shape and skeleton joints
 
         Parameters
@@ -342,17 +342,21 @@ def hybrik(betas, global_orient, pose_skeleton, phis,
 
     # 2. Get the rest joints
     # NxJx3 array
-    rest_J = torch.zeros((v_shaped.shape[0], 29, 3), dtype=dtype, device=device)
-    rest_J[:, :24] = vertices2joints(J_regressor, v_shaped)
+    if leaf_thetas is not None:
+        rest_J = vertices2joints(J_regressor, v_shaped)
+    else:
+        rest_J = torch.zeros((v_shaped.shape[0], 29, 3), dtype=dtype, device=device)
+        rest_J[:, :24] = vertices2joints(J_regressor, v_shaped)
 
-    leaf_number = [411, 2445, 5905, 3216, 6617]
-    leaf_vertices = v_shaped[:, leaf_number].clone()
-    rest_J[:, 24:] = leaf_vertices
+        leaf_number = [411, 2445, 5905, 3216, 6617]
+        leaf_vertices = v_shaped[:, leaf_number].clone()
+        rest_J[:, 24:] = leaf_vertices
 
     # 3. Get the rotation matrics
     rot_mats, rotate_rest_pose = batch_inverse_kinematics_transform(
         pose_skeleton, global_orient, phis,
-        rest_J.clone(), children, parents, dtype=dtype, train=train)
+        rest_J.clone(), children, parents, dtype=dtype, train=train,
+        leaf_thetas=leaf_thetas)
 
     test_joints = True
     if test_joints:
@@ -542,7 +546,8 @@ def batch_inverse_kinematics_transform(
         pose_skeleton, global_orient,
         phis,
         rest_pose,
-        children, parents, dtype=torch.float32, train=False):
+        children, parents, dtype=torch.float32, train=False,
+        leaf_thetas=None):
     """
     Applies a batch of inverse kinematics transfoirm to the joints
 
@@ -610,11 +615,62 @@ def batch_inverse_kinematics_transform(
     rot_mat_chain = [global_orient_mat]
     rot_mat_local = [global_orient_mat]
     # leaf nodes rot_mats
+    if leaf_thetas is not None:
+        leaf_cnt = 0
+        leaf_rot_mats = leaf_thetas.view([batch_size, 5, 3, 3])
 
     for i in range(1, parents.shape[0]):
         if children[i] == -1:
             # leaf nodes
-            continue
+            if leaf_thetas is not None:
+                rot_mat = leaf_rot_mats[:, leaf_cnt, :, :]
+                leaf_cnt += 1
+
+                rotate_rest_pose[:, i] = rotate_rest_pose[:, parents[i]] + torch.matmul(
+                    rot_mat_chain[parents[i]],
+                    rel_rest_pose[:, i]
+                )
+
+                rot_mat_chain.append(torch.matmul(
+                    rot_mat_chain[parents[i]],
+                    rot_mat))
+                rot_mat_local.append(rot_mat)
+        elif children[i] == -3:
+            # three children
+            rotate_rest_pose[:, i] = rotate_rest_pose[:, parents[i]] + torch.matmul(
+                rot_mat_chain[parents[i]],
+                rel_rest_pose[:, i]
+            )
+
+            spine_child = []
+            for c in range(1, parents.shape[0]):
+                if parents[c] == i and c not in spine_child:
+                    spine_child.append(c)
+
+            # original
+            spine_child = []
+            for c in range(1, parents.shape[0]):
+                if parents[c] == i and c not in spine_child:
+                    spine_child.append(c)
+
+            children_final_loc = []
+            children_rest_loc = []
+            for c in spine_child:
+                temp = final_pose_skeleton[:, c] - rotate_rest_pose[:, i]
+                children_final_loc.append(temp)
+
+                children_rest_loc.append(rel_rest_pose[:, c].clone())
+
+            rot_mat = batch_get_3children_orient_svd(
+                children_final_loc, children_rest_loc,
+                rot_mat_chain[parents[i]], spine_child, dtype)
+
+            rot_mat_chain.append(
+                torch.matmul(
+                    rot_mat_chain[parents[i]],
+                    rot_mat)
+            )
+            rot_mat_local.append(rot_mat)
         else:
             # (B, 3, 1)
             rotate_rest_pose[:, i] = rotate_rest_pose[:, parents[i]] + torch.matmul(
@@ -792,6 +848,36 @@ def batch_get_pelvis_orient(rel_pose_skeleton, rel_rest_pose, parents, children,
 
     rot_mat = torch.matmul(rot_mat_center, rot_mat_spine)
 
+    return rot_mat
+
+
+def batch_get_3children_orient_svd(rel_pose_skeleton, rel_rest_pose, rot_mat_chain_parent, children_list, dtype):
+
+    rest_mat = []
+    target_mat = []
+    for c, child in enumerate(children_list):
+        if isinstance(rel_pose_skeleton, list):
+            target = rel_pose_skeleton[c].clone()
+            template = rel_rest_pose[c].clone()
+        else:
+            target = rel_pose_skeleton[:, child].clone()
+            template = rel_rest_pose[:, child].clone()
+
+        target = torch.matmul(
+            rot_mat_chain_parent.transpose(1, 2),
+            target)
+
+        target_mat.append(target)
+        rest_mat.append(template)
+
+    rest_mat = torch.cat(rest_mat, dim=2)
+    target_mat = torch.cat(target_mat, dim=2)
+    S = rest_mat.bmm(target_mat.transpose(1, 2))
+
+    U, _, V = torch.svd(S)
+
+    rot_mat = torch.bmm(V, U.transpose(1, 2))
+    assert torch.sum(torch.isnan(rot_mat)) == 0, ('3children rot_mat', rot_mat)
     return rot_mat
 
 

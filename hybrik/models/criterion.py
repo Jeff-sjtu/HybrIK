@@ -59,11 +59,14 @@ class L1LossDimSMPL(nn.Module):
         loss_twist = self.criterion_smpl(output.pred_phi * labels['target_twist_weight'], labels['target_twist'] * labels['target_twist_weight'])
 
         # Joints loss
-        loss_uvd29 = weighted_l1_loss(output.pred_uvd_jts_29, labels['target_uvd_29'], labels['target_weight_29'], self.size_average)
+        pred_uvd = output.pred_uvd_jts
+        target_uvd = labels['target_uvd_29'][:, :pred_uvd.shape[1]]
+        target_uvd_weight = labels['target_weight_29'][:, :pred_uvd.shape[1]]
+        loss_uvd = weighted_l1_loss(output.pred_uvd_jts, target_uvd, target_uvd_weight, self.size_average)
 
         loss = loss_beta * self.beta_weight + loss_theta * self.theta_weight
         loss += loss_twist * self.twist_weight
 
-        loss += loss_uvd29 * self.uvd24_weight
+        loss += loss_uvd * self.uvd24_weight
 
         return loss

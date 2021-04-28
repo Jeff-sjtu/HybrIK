@@ -1,3 +1,8 @@
+# -----------------------------------------------------
+# Copyright (c) Shanghai Jiao Tong University. All rights reserved.
+# Written by Jiefeng Li (jeff.lee.sjtu@gmail.com)
+# -----------------------------------------------------
+
 from collections import namedtuple
 
 import numpy as np
@@ -9,10 +14,11 @@ from .builder import SPPE
 from .layers.Resnet import ResNet
 from .layers.smpl.SMPL import SMPL_layer
 
+
 ModelOutput = namedtuple(
     typename='ModelOutput',
     field_names=['pred_shape', 'pred_theta_mats', 'pred_phi', 'pred_delta_shape', 'pred_leaf',
-                 'pred_uvd_jts_29', 'pred_xyz_jts_24', 'pred_xyz_jts_24_struct',
+                 'pred_uvd_jts', 'pred_xyz_jts_24', 'pred_xyz_jts_24_struct',
                  'pred_xyz_jts_17', 'pred_vertices', 'maxvals']
 )
 ModelOutput.__new__.__defaults__ = (None,) * len(ModelOutput._fields)
@@ -31,12 +37,12 @@ def norm_heatmap(norm_type, heatmap):
 
 
 @SPPE.register_module
-class Simple3DPoseBaseSMPL(nn.Module):
+class Simple3DPoseBaseSMPL24(nn.Module):
     def __init__(self, norm_layer=nn.BatchNorm2d, **kwargs):
-        super(Simple3DPoseBaseSMPL, self).__init__()
+        super(Simple3DPoseBaseSMPL24, self).__init__()
         self.deconv_dim = kwargs['NUM_DECONV_FILTERS']
         self._norm_layer = norm_layer
-        self.num_joints = kwargs['NUM_JOINTS']
+        self.num_joints = 24
         self.norm_type = kwargs['POST']['NORM_TYPE']
         self.depth_dim = kwargs['EXTRA']['DEPTH_DIM']
         self.height_dim = kwargs['HEATMAP_SIZE'][0]
@@ -78,18 +84,14 @@ class Simple3DPoseBaseSMPL(nn.Module):
         self.smpl = SMPL_layer(
             './model_files/basicModel_neutral_lbs_10_207_0_v1.0.0.pkl',
             h36m_jregressor=h36m_jregressor,
-            dtype=self.smpl_dtype
+            dtype=self.smpl_dtype,
+            num_joints=self.num_joints
         )
 
         self.joint_pairs_24 = ((1, 2), (4, 5), (7, 8),
                                (10, 11), (13, 14), (16, 17), (18, 19), (20, 21), (22, 23))
-
-        self.joint_pairs_29 = ((1, 2), (4, 5), (7, 8),
-                               (10, 11), (13, 14), (16, 17), (18, 19), (20, 21),
-                               (22, 23), (25, 26), (27, 28))
-
         self.leaf_pairs = ((0, 1), (3, 4))
-        self.root_idx_smpl = 0
+        self.root_idx_24 = 0
 
         # mean shape
         init_shape = np.load('./model_files/h36m_mean_beta.npy')
@@ -104,6 +106,7 @@ class Simple3DPoseBaseSMPL(nn.Module):
         self.drop2 = nn.Dropout(p=0.5)
         self.decshape = nn.Linear(1024, 10)
         self.decphi = nn.Linear(1024, 23 * 2)  # [cos(phi), sin(phi)]
+        self.decleaf = nn.Linear(1024, 5 * 4)  # rot_mat quat
 
     def _make_deconv_layer(self):
         deconv_layers = []
@@ -182,10 +185,12 @@ class Simple3DPoseBaseSMPL(nn.Module):
         return xyz_jts
 
     def flip_uvd_coord(self, pred_jts, shift=False, flatten=True):
+        num_joints = 24
+
         if flatten:
             assert pred_jts.dim() == 2
             num_batches = pred_jts.shape[0]
-            pred_jts = pred_jts.reshape(num_batches, self.num_joints, 3)
+            pred_jts = pred_jts.reshape(num_batches, num_joints, 3)
         else:
             assert pred_jts.dim() == 3
             num_batches = pred_jts.shape[0]
@@ -196,14 +201,14 @@ class Simple3DPoseBaseSMPL(nn.Module):
         else:
             pred_jts[:, :, 0] = -1 / self.width_dim - pred_jts[:, :, 0]
 
-        for pair in self.joint_pairs_29:
+        for pair in self.joint_pairs_24:
             dim0, dim1 = pair
             idx = torch.Tensor((dim0, dim1)).long()
             inv_idx = torch.Tensor((dim1, dim0)).long()
             pred_jts[:, idx] = pred_jts[:, inv_idx]
 
         if flatten:
-            pred_jts = pred_jts.reshape(num_batches, self.num_joints * 3)
+            pred_jts = pred_jts.reshape(num_batches, num_joints * 3)
 
         return pred_jts
 
@@ -217,6 +222,19 @@ class Simple3DPoseBaseSMPL(nn.Module):
             pred_phi[:, idx] = pred_phi[:, inv_idx]
 
         return pred_phi
+
+    def flip_leaf(self, pred_leaf):
+
+        pred_leaf[:, :, 2] = -1 * pred_leaf[:, :, 2]
+        pred_leaf[:, :, 3] = -1 * pred_leaf[:, :, 3]
+
+        for pair in self.leaf_pairs:
+            dim0, dim1 = pair
+            idx = torch.Tensor((dim0, dim1)).long()
+            inv_idx = torch.Tensor((dim1, dim0)).long()
+            pred_leaf[:, idx] = pred_leaf[:, inv_idx]
+
+        return pred_leaf
 
     def forward(self, x, trans_inv, intrinsic_param, joint_root, depth_factor, flip_item=None, flip_output=False):
         batch_size = x.shape[0]
@@ -257,9 +275,9 @@ class Simple3DPoseBaseSMPL(nn.Module):
         coord_z = coord_z / float(self.depth_dim) - 0.5
 
         #  -0.5 ~ 0.5
-        pred_uvd_jts_29 = torch.cat((coord_x, coord_y, coord_z), dim=2)
+        pred_uvd_jts_24 = torch.cat((coord_x, coord_y, coord_z), dim=2)
 
-        pred_uvd_jts_29_flat = pred_uvd_jts_29.reshape((batch_size, self.num_joints * 3))
+        pred_uvd_jts_24_flat = pred_uvd_jts_24.reshape((batch_size, self.num_joints * 3))
 
         x0 = self.avg_pool(x0)
         x0 = x0.view(x0.size(0), -1)
@@ -275,38 +293,42 @@ class Simple3DPoseBaseSMPL(nn.Module):
         delta_shape = self.decshape(xc)
         pred_shape = delta_shape + init_shape
         pred_phi = self.decphi(xc)
+        pred_leaf = self.decleaf(xc)
 
         if flip_item is not None:
             assert flip_output
-            pred_uvd_jts_29_orig, pred_phi_orig, pred_leaf_orig, pred_shape_orig = flip_item
+            pred_uvd_jts_24_orig, pred_phi_orig, pred_leaf_orig, pred_shape_orig = flip_item
 
         if flip_output:
-            pred_uvd_jts_29 = self.flip_uvd_coord(pred_uvd_jts_29, flatten=False, shift=True)
+            pred_uvd_jts_24 = self.flip_uvd_coord(pred_uvd_jts_24, flatten=False, shift=True)
         if flip_output and flip_item is not None:
-            pred_uvd_jts_29 = (pred_uvd_jts_29 + pred_uvd_jts_29_orig.reshape(batch_size, 29, 3)) / 2
+            pred_uvd_jts_24 = (pred_uvd_jts_24 + pred_uvd_jts_24_orig.reshape(batch_size, 24, 3)) / 2
 
-        pred_uvd_jts_29_flat = pred_uvd_jts_29.reshape((batch_size, self.num_joints * 3))
+        pred_uvd_jts_24_flat = pred_uvd_jts_24.reshape((batch_size, self.num_joints * 3))
 
         #  -0.5 ~ 0.5
         # Rotate back
-        pred_xyz_jts_29 = self.uvd_to_cam(pred_uvd_jts_29, trans_inv, intrinsic_param, joint_root, depth_factor)
-        assert torch.sum(torch.isnan(pred_xyz_jts_29)) == 0, ('pred_xyz_jts_29', pred_xyz_jts_29)
+        pred_xyz_jts_24 = self.uvd_to_cam(pred_uvd_jts_24[:, :24, :], trans_inv, intrinsic_param, joint_root, depth_factor)
+        assert torch.sum(torch.isnan(pred_xyz_jts_24)) == 0, ('pred_xyz_jts_24', pred_xyz_jts_24)
 
-        pred_xyz_jts_29 = pred_xyz_jts_29 - pred_xyz_jts_29[:, self.root_idx_smpl, :].unsqueeze(1)
+        pred_xyz_jts_24 = pred_xyz_jts_24 - pred_xyz_jts_24[:, self.root_idx_24, :].unsqueeze(1)
 
         pred_phi = pred_phi.reshape(batch_size, 23, 2)
+        pred_leaf = pred_leaf.reshape(batch_size, 5, 4)
 
         if flip_output:
             pred_phi = self.flip_phi(pred_phi)
-
+            pred_leaf = self.flip_leaf(pred_leaf)
         if flip_output and flip_item is not None:
             pred_phi = (pred_phi + pred_phi_orig) / 2
+            pred_leaf = (pred_leaf + pred_leaf_orig) / 2
             pred_shape = (pred_shape + pred_shape_orig) / 2
 
         output = self.smpl.hybrik(
-            pose_skeleton=pred_xyz_jts_29.type(self.smpl_dtype) * 2,
+            pose_skeleton=pred_xyz_jts_24.type(self.smpl_dtype) * 2,
             betas=pred_shape.type(self.smpl_dtype),
             phis=pred_phi.type(self.smpl_dtype),
+            leaf_thetas=pred_leaf.type(self.smpl_dtype),
             global_orient=None,
             return_verts=True
         )
@@ -316,16 +338,17 @@ class Simple3DPoseBaseSMPL(nn.Module):
         #  -0.5 ~ 0.5
         pred_xyz_jts_17 = output.joints_from_verts.float() / 2
         pred_theta_mats = output.rot_mats.float().reshape(batch_size, 24 * 4)
-        pred_xyz_jts_24 = pred_xyz_jts_29[:, :24, :].reshape(batch_size, 72)
+        pred_xyz_jts_24 = pred_xyz_jts_24.reshape(batch_size, 72)
         pred_xyz_jts_24_struct = pred_xyz_jts_24_struct.reshape(batch_size, 72)
         pred_xyz_jts_17 = pred_xyz_jts_17.reshape(batch_size, 17 * 3)
 
         output = ModelOutput(
             pred_phi=pred_phi,
+            pred_leaf=pred_leaf,
             pred_delta_shape=delta_shape,
             pred_shape=pred_shape,
             pred_theta_mats=pred_theta_mats,
-            pred_uvd_jts=pred_uvd_jts_29_flat,
+            pred_uvd_jts=pred_uvd_jts_24_flat,
             pred_xyz_jts_24=pred_xyz_jts_24,
             pred_xyz_jts_24_struct=pred_xyz_jts_24_struct,
             pred_xyz_jts_17=pred_xyz_jts_17,

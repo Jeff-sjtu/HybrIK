@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from .lbs import lbs, hybrik, rotmat_to_quat
+from .lbs import lbs, hybrik, rotmat_to_quat, quat_to_rotmat
 
 try:
     import cPickle as pk
@@ -63,7 +63,8 @@ class SMPL_layer(nn.Module):
                  model_path,
                  h36m_jregressor,
                  gender='neutral',
-                 dtype=torch.float32):
+                 dtype=torch.float32,
+                 num_joints=29):
         ''' SMPL model layers
 
         Parameters:
@@ -120,6 +121,8 @@ class SMPL_layer(nn.Module):
             'J_regressor_h36m',
             to_tensor(to_np(h36m_jregressor), dtype=dtype))
 
+        self.num_joints = num_joints
+
         # indices of parents for each joints
         parents = torch.zeros(len(self.JOINT_NAMES), dtype=torch.long)
         parents[:(self.NUM_JOINTS + 1)] = to_tensor(to_np(self.smpl_data.kintree_table[0])).long()
@@ -130,6 +133,8 @@ class SMPL_layer(nn.Module):
         parents[26] = 23
         parents[27] = 10
         parents[28] = 11
+        if parents.shape[0] > self.num_joints:
+            parents = parents[:24]
 
         self.register_buffer(
             'children_map',
@@ -143,13 +148,14 @@ class SMPL_layer(nn.Module):
 
     def _parents_to_children(self, parents):
         children = torch.ones_like(parents) * -1
-        for i in range(len(self.JOINT_NAMES)):
+        for i in range(self.num_joints):
             if children[parents[i]] < 0:
                 children[parents[i]] = i
         for i in self.LEAF_IDX:
-            children[i] = -1
+            if i < children.shape[0]:
+                children[i] = -1
 
-        # children[self.SPINE3_IDX] = -3
+        children[self.SPINE3_IDX] = -3
         children[0] = 3
         children[self.SPINE3_IDX] = self.JOINT_NAMES.index('neck')
 
@@ -218,7 +224,8 @@ class SMPL_layer(nn.Module):
                phis,
                global_orient,
                transl=None,
-               return_verts=True):
+               return_verts=True,
+               leaf_thetas=None):
         ''' Inverse pass for the SMPL model
 
             Parameters
@@ -242,10 +249,16 @@ class SMPL_layer(nn.Module):
         '''
         batch_size = pose_skeleton.shape[0]
 
-        vertices, new_joints, rot_mats, joints_from_verts = hybrik(betas, global_orient, pose_skeleton, phis,
-                                                                   self.v_template, self.shapedirs, self.posedirs,
-                                                                   self.J_regressor, self.J_regressor_h36m, self.parents, self.children_map,
-                                                                   self.lbs_weights, dtype=self.dtype, train=self.training)
+        if leaf_thetas is not None:
+            leaf_thetas = leaf_thetas.reshape(batch_size * 5, 4)
+            leaf_thetas = quat_to_rotmat(leaf_thetas)
+
+        vertices, new_joints, rot_mats, joints_from_verts = hybrik(
+            betas, global_orient, pose_skeleton, phis,
+            self.v_template, self.shapedirs, self.posedirs,
+            self.J_regressor, self.J_regressor_h36m, self.parents, self.children_map,
+            self.lbs_weights, dtype=self.dtype, train=self.training,
+            leaf_thetas=leaf_thetas)
 
         rot_mats = rot_mats.reshape(batch_size * 24, 3, 3)
         rot_mats = rotmat_to_quat(rot_mats).reshape(batch_size, 24 * 4)

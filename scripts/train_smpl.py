@@ -58,12 +58,12 @@ def train(opt, train_loader, m, criterion, optimizer, writer):
 
         loss = criterion(output, labels)
 
-        pred_uvd_jts_29 = output.pred_uvd_jts_29
+        pred_uvd_jts = output.pred_uvd_jts
         pred_xyz_jts_17 = output.pred_xyz_jts_17
         label_masks_29 = labels['target_weight_29']
         label_masks_17 = labels['target_weight_17']
 
-        acc_uvd_29 = calc_coord_accuracy(pred_uvd_jts_29.cpu(), labels['target_uvd_29'].cpu(), label_masks_29.cpu(), hm_shape, num_joints=29)
+        acc_uvd_29 = calc_coord_accuracy(pred_uvd_jts.cpu(), labels['target_uvd_29'].cpu(), label_masks_29.cpu(), hm_shape, num_joints=29)
         acc_xyz_17 = calc_coord_accuracy(pred_xyz_jts_17.cpu(), labels['target_xyz_17'].cpu(), label_masks_17.cpu(), hm_shape, num_joints=17, root_idx=root_idx_17)
 
         if isinstance(inps, list):
@@ -129,7 +129,7 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=32, pr
 
         output = m(inps, trans_inv, intrinsic_param, root, depth_factor, flip_output)
 
-        pred_uvd_jts_29 = output.pred_uvd_jts_29
+        pred_uvd_jts = output.pred_uvd_jts
         pred_xyz_jts_24 = output.pred_xyz_jts_24.reshape(inps.shape[0], -1, 3)[:, :24, :]
         pred_xyz_jts_24_struct = output.pred_xyz_jts_24_struct.reshape(inps.shape[0], 24, 3)
         pred_xyz_jts_17 = output.pred_xyz_jts_17.reshape(inps.shape[0], 17, 3)
@@ -146,10 +146,10 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=32, pr
 
             output_flip = m(inps_flip, trans_inv, intrinsic_param,
                             root, depth_factor,
-                            flip_item=(pred_uvd_jts_29, test_phi, test_leaf, test_betas),
+                            flip_item=(pred_uvd_jts, test_phi, test_leaf, test_betas),
                             flip_output=True)
 
-            pred_uvd_jts_29_flip = output_flip.pred_uvd_jts_29
+            pred_uvd_jts_flip = output_flip.pred_uvd_jts
 
             pred_xyz_jts_24_flip = output_flip.pred_xyz_jts_24.reshape(
                 inps.shape[0], -1, 3)[:, :24, :]
@@ -158,7 +158,7 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=32, pr
             pred_xyz_jts_17_flip = output_flip.pred_xyz_jts_17.reshape(
                 inps.shape[0], 17, 3)
 
-            pred_uvd_jts_29 = pred_uvd_jts_29_flip
+            pred_uvd_jts = pred_uvd_jts_flip
 
             pred_xyz_jts_24 = pred_xyz_jts_24_flip
             pred_xyz_jts_24_struct = pred_xyz_jts_24_struct_flip
@@ -167,24 +167,24 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=32, pr
         pred_xyz_jts_24 = pred_xyz_jts_24.cpu().data.numpy()
         pred_xyz_jts_24_struct = pred_xyz_jts_24_struct.cpu().data.numpy()
         pred_xyz_jts_17 = pred_xyz_jts_17.cpu().data.numpy()
-        pred_uvd_jts_29 = pred_uvd_jts_29.cpu().data
+        pred_uvd_jts = pred_uvd_jts.cpu().data
 
         assert pred_xyz_jts_17.ndim in [2, 3]
         pred_xyz_jts_17 = pred_xyz_jts_17.reshape(
             pred_xyz_jts_17.shape[0], 17, 3)
-        pred_uvd_jts_29 = pred_uvd_jts_29.reshape(
-            pred_uvd_jts_29.shape[0], -1, 3)
+        pred_uvd_jts = pred_uvd_jts.reshape(
+            pred_uvd_jts.shape[0], -1, 3)
         pred_xyz_jts_24 = pred_xyz_jts_24.reshape(
             pred_xyz_jts_24.shape[0], 24, 3)
         pred_scores = output.maxvals.cpu().data[:, :29]
 
         for i in range(pred_xyz_jts_17.shape[0]):
             bbox = bboxes[i].tolist()
-            pose_coords_29, pose_scores = heatmap_to_coord(
-                pred_uvd_jts_29[i], pred_scores[i], hm_shape, bbox, mean_bbox_scale=None)
+            pose_coords, pose_scores = heatmap_to_coord(
+                pred_uvd_jts[i], pred_scores[i], hm_shape, bbox, mean_bbox_scale=None)
             kpt_pred[int(img_ids[i])] = {
                 'xyz_17': pred_xyz_jts_17[i],
-                'uvd_29': pose_coords_29[0],
+                'uvd_jts': pose_coords[0],
                 'xyz_24': pred_xyz_jts_24[i]
             }
 
