@@ -32,7 +32,7 @@ conda create -n hybrik python=3.6 -y
 conda activate hybrik
 
 # 2. Install PyTorch
-conda install pytorch==1.1.0 torchvision==0.3.0
+conda install pytorch==1.2.0 torchvision==0.4.0
 
 # 3. Pull our code
 git clone https://github.com/Jeff-sjtu/HybrIK.git
