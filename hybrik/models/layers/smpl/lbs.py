@@ -920,21 +920,64 @@ def rotmat_to_quat(rotmat):
     Returns:
         quat: size = [B, 4] 4 <===>(w, x, y, z)
     """
-    trace = torch.einsum('bii->b', rotmat)
-    m32 = rotmat[:, 2, 1]
-    m23 = rotmat[:, 1, 2]
-    m13 = rotmat[:, 0, 2]
-    m31 = rotmat[:, 2, 0]
-    m21 = rotmat[:, 1, 0]
-    m12 = rotmat[:, 0, 1]
+    # trace = torch.einsum('bii->b', rotmat)
+    #     # m32 = rotmat[:, 2, 1]
+    #     # m23 = rotmat[:, 1, 2]
+    #     # m13 = rotmat[:, 0, 2]
+    #     # m31 = rotmat[:, 2, 0]
+    #     # m21 = rotmat[:, 1, 0]
+    #     # m12 = rotmat[:, 0, 1]
+    #     #
+    #     # trace = torch.clamp_min(trace + 1, 1e-8)
+    #     # w = torch.sqrt(trace) / 2
+    #     # x = (m32 - m23) / (4 * w)
+    #     # y = (m13 - m31) / (4 * w)
+    #     # z = (m21 - m12) / (4 * w)
+    #     #
+    #     # return torch.stack([w, x, y, z], dim=1)
 
-    trace = torch.clamp_min(trace + 1, 1e-8)
-    w = torch.sqrt(trace) / 2
-    x = (m32 - m23) / (4 * w)
-    y = (m13 - m31) / (4 * w)
-    z = (m21 - m12) / (4 * w)
+    trace_add_one = torch.einsum('bii->b', rotmat) + 1
 
-    return torch.stack([w, x, y, z], dim=1)
+    m00 = rotmat[:, 0, 0]
+    m01 = rotmat[:, 0, 1]
+    m02 = rotmat[:, 0, 2]
+
+    m10 = rotmat[:, 1, 0]
+    m11 = rotmat[:, 1, 1]
+    m12 = rotmat[:, 1, 2]
+
+    m20 = rotmat[:, 2, 0]
+    m22 = rotmat[:, 2, 2]
+    m21 = rotmat[:, 2, 1]
+
+    w, x, y, z = list(), list(), list(), list()
+    for index in range(len(trace_add_one)):
+        if trace_add_one[index] > 0:
+            t = 2 * torch.sqrt(trace_add_one[index])
+            w.append(t / 4)
+            x.append((m21[index] - m12[index]) / t)
+            y.append((m02[index] - m20[index]) / t)
+            z.append((m10[index] - m01[index]) / t)
+        elif m00[index] > m11[index] and m00[index] > m22[index]:
+            s = 2 * torch.sqrt(1 + m00[index] - m11[index] - m22[index])
+            w.append((m21[index] - m12[index]) / s)
+            x.append(s / 4)
+            y.append((m01[index] + m10[index]) / s)
+            z.append((m02[index] + m20[index]) / s)
+        elif m11[index] > m22[index]:
+            s = 2 * torch.sqrt(1 - m00[index] + m11[index] - m22[index])
+            w.append((m02[index] - m20[index]) / s)
+            x.append((m01[index] + m10[index]) / s)
+            y.append(s / 4)
+            z.append((m12[index] + m21[index]) / s)
+        else:
+            s = 2 * torch.sqrt(1 - m00[index] - m11[index] + m22[index])
+            w.append((m10[index] - m01[index]) / s)
+            x.append((m02[index] + m20[index]) / s)
+            y.append((m12[index] + m21[index]) / s)
+            z.append(s / 4)
+
+    return torch.stack([torch.tensor(item).reshape(-1, 1) for item in (w, x, y, z)], dim=1)
 
 
 def quat_to_rotmat(quat):
