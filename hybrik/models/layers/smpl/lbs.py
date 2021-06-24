@@ -80,7 +80,7 @@ def find_dynamic_lmk_idx_and_bcoords(vertices, pose, dynamic_lmk_faces_idx,
 
     rel_rot_mat = torch.eye(
         3, device=vertices.device, dtype=dtype).unsqueeze_(dim=0).repeat(
-            batch_size, 1, 1)
+        batch_size, 1, 1)
     for idx in range(len(neck_kin_chain)):
         rel_rot_mat = torch.bmm(rot_mats[:, idx], rel_rot_mat)
 
@@ -706,7 +706,8 @@ def batch_inverse_kinematics_transform(
             axis_norm = torch.norm(axis, dim=1, keepdim=True)
 
             # (B, 1, 1)
-            cos = torch.sum(child_rest_loc * child_final_loc, dim=1, keepdim=True) / (child_rest_norm * child_final_norm + 1e-8)
+            cos = torch.sum(child_rest_loc * child_final_loc, dim=1, keepdim=True) / (
+                        child_rest_norm * child_final_norm + 1e-8)
             sin = axis_norm / (child_rest_norm * child_final_norm + 1e-8)
 
             # (B, 3, 1)
@@ -750,7 +751,6 @@ def batch_inverse_kinematics_transform(
 
 
 def batch_get_pelvis_orient_svd(rel_pose_skeleton, rel_rest_pose, parents, children, dtype):
-
     pelvis_child = [int(children[0])]
     for i in range(1, parents.shape[0]):
         if parents[i] == 0 and i not in pelvis_child:
@@ -826,7 +826,7 @@ def batch_get_pelvis_orient(rel_pose_skeleton, rel_rest_pose, parents, children,
 
     # (B, 1, 1)
     cos = torch.sum(center_rest_loc * center_final_loc, dim=1, keepdim=True) / \
-        (center_rest_loc_norm * center_final_loc_norm + 1e-8)
+          (center_rest_loc_norm * center_final_loc_norm + 1e-8)
     sin = axis_norm / (center_rest_loc_norm * center_final_loc_norm + 1e-8)
 
     assert torch.sum(torch.isnan(cos)
@@ -852,7 +852,6 @@ def batch_get_pelvis_orient(rel_pose_skeleton, rel_rest_pose, parents, children,
 
 
 def batch_get_3children_orient_svd(rel_pose_skeleton, rel_rest_pose, rot_mat_chain_parent, children_list, dtype):
-
     rest_mat = []
     target_mat = []
     for c, child in enumerate(children_list):
@@ -918,66 +917,45 @@ def rotmat_to_quat(rotmat):
     Args:
         Rotation matrix corresponding to the quaternion -- size = [B, 3, 3]
     Returns:
-        quat: size = [B, 4] 4 <===>(w, x, y, z)
+        quat: size = [B, 4] 4 <===> (w, x, y, z)
     """
-    # trace = torch.einsum('bii->b', rotmat)
-    #     # m32 = rotmat[:, 2, 1]
-    #     # m23 = rotmat[:, 1, 2]
-    #     # m13 = rotmat[:, 0, 2]
-    #     # m31 = rotmat[:, 2, 0]
-    #     # m21 = rotmat[:, 1, 0]
-    #     # m12 = rotmat[:, 0, 1]
-    #     #
-    #     # trace = torch.clamp_min(trace + 1, 1e-8)
-    #     # w = torch.sqrt(trace) / 2
-    #     # x = (m32 - m23) / (4 * w)
-    #     # y = (m13 - m31) / (4 * w)
-    #     # z = (m21 - m12) / (4 * w)
-    #     #
-    #     # return torch.stack([w, x, y, z], dim=1)
+    return torch.cat([single_rotation_matrix_to_quaternion_torch(mat) for mat in rotmat], dim=0)
 
-    trace_add_one = torch.einsum('bii->b', rotmat) + 1
 
-    m00 = rotmat[:, 0, 0]
-    m01 = rotmat[:, 0, 1]
-    m02 = rotmat[:, 0, 2]
-
-    m10 = rotmat[:, 1, 0]
-    m11 = rotmat[:, 1, 1]
-    m12 = rotmat[:, 1, 2]
-
-    m20 = rotmat[:, 2, 0]
-    m22 = rotmat[:, 2, 2]
-    m21 = rotmat[:, 2, 1]
-
-    w, x, y, z = list(), list(), list(), list()
-    for index in range(len(trace_add_one)):
-        if trace_add_one[index] > 0:
-            t = 2 * torch.sqrt(trace_add_one[index])
-            w.append(t / 4)
-            x.append((m21[index] - m12[index]) / t)
-            y.append((m02[index] - m20[index]) / t)
-            z.append((m10[index] - m01[index]) / t)
-        elif m00[index] > m11[index] and m00[index] > m22[index]:
-            s = 2 * torch.sqrt(1 + m00[index] - m11[index] - m22[index])
-            w.append((m21[index] - m12[index]) / s)
-            x.append(s / 4)
-            y.append((m01[index] + m10[index]) / s)
-            z.append((m02[index] + m20[index]) / s)
-        elif m11[index] > m22[index]:
-            s = 2 * torch.sqrt(1 - m00[index] + m11[index] - m22[index])
-            w.append((m02[index] - m20[index]) / s)
-            x.append((m01[index] + m10[index]) / s)
-            y.append(s / 4)
-            z.append((m12[index] + m21[index]) / s)
+def single_rotation_matrix_to_quaternion_torch(rotation_matrix):
+    """Convert quaternion coefficients to rotation matrix.
+    Args:
+        Rotation matrix corresponding to the quaternion -- size = [3, 3]
+    Returns:
+        quaternion: size = [1, 4] 4 <===> (w, x, y, z)
+    """
+    assert rotation_matrix.shape == (3, 3)
+    trace = rotation_matrix.trace()
+    if 1 + trace > 0:
+        s = 2 * torch.sqrt(1 + trace)
+        w = s / 4
+        x = (rotation_matrix[2, 1] - rotation_matrix[1, 2]) / s
+        y = (rotation_matrix[0, 2] - rotation_matrix[2, 0]) / s
+        z = (rotation_matrix[1, 0] - rotation_matrix[0, 1]) / s
+    else:
+        max_val, max_ind = torch.max(torch.diag(rotation_matrix), dim=0)
+        s = 2 * torch.sqrt(1 - trace + 2 * max_val)
+        if max_ind == 0:
+            w = (rotation_matrix[2, 1] - rotation_matrix[1, 2]) / s
+            x = s / 4
+            y = (rotation_matrix[0, 1] + rotation_matrix[1, 0]) / s
+            z = (rotation_matrix[0, 2] + rotation_matrix[2, 0]) / s
+        elif max_ind == 1:
+            w = (rotation_matrix[0, 2] - rotation_matrix[2, 0]) / s
+            x = (rotation_matrix[0, 1] + rotation_matrix[1, 0]) / s
+            y = s / 4
+            z = (rotation_matrix[1, 2] + rotation_matrix[2, 1]) / s
         else:
-            s = 2 * torch.sqrt(1 - m00[index] - m11[index] + m22[index])
-            w.append((m10[index] - m01[index]) / s)
-            x.append((m02[index] + m20[index]) / s)
-            y.append((m12[index] + m21[index]) / s)
-            z.append(s / 4)
-
-    return torch.stack([torch.tensor(item).reshape(-1, 1) for item in (w, x, y, z)], dim=1)
+            w = (rotation_matrix[1, 0] - rotation_matrix[0, 1]) / s
+            x = (rotation_matrix[0, 2] + rotation_matrix[2, 0]) / s
+            y = (rotation_matrix[1, 2] + rotation_matrix[2, 1]) / s
+            z = s / 4
+    return torch.tensor([w, x, y, z]).unsqueeze_(0)
 
 
 def quat_to_rotmat(quat):
