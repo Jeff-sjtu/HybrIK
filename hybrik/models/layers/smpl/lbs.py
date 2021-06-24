@@ -914,27 +914,49 @@ def vectors2rotmat(vec_rest, vec_final, dtype):
 
 
 def rotmat_to_quat(rotmat):
-    """Convert quaternion coefficients to rotation matrix.
+    """Convert rotation matrix to quaternion coefficients.
     Args:
-        Rotation matrix corresponding to the quaternion -- size = [B, 3, 3]
+        rotmat: size is [B, 3, 3]
     Returns:
-        quat: size = [B, 4] 4 <===>(w, x, y, z)
+        Quaternion: size is [B, 4] <===> (w, x, y, z)
     """
-    trace = torch.einsum('bii->b', rotmat)
-    m32 = rotmat[:, 2, 1]
-    m23 = rotmat[:, 1, 2]
-    m13 = rotmat[:, 0, 2]
-    m31 = rotmat[:, 2, 0]
-    m21 = rotmat[:, 1, 0]
-    m12 = rotmat[:, 0, 1]
+    return torch.cat([single_rotation_matrix_to_quaternion_torch(mat) for mat in rotmat], dim=0)
 
-    trace = torch.clamp_min(trace + 1, 1e-8)
-    w = torch.sqrt(trace) / 2
-    x = (m32 - m23) / (4 * w)
-    y = (m13 - m31) / (4 * w)
-    z = (m21 - m12) / (4 * w)
 
-    return torch.stack([w, x, y, z], dim=1)
+def single_rotation_matrix_to_quaternion_torch(rotation_matrix):
+    """Convert rotation matrix to quaternion coefficient.
+    Args:
+        rotation_matrix: size is [3, 3]
+    Returns:
+        Quaternion: size is [1, 4] <===> (w, x, y, z)
+    """
+    assert rotation_matrix.shape == (3, 3)
+    trace = rotation_matrix.trace()
+    if 1 + trace > 0:
+        s = 2 * torch.sqrt(1 + trace)
+        w = s / 4
+        x = (rotation_matrix[2, 1] - rotation_matrix[1, 2]) / s
+        y = (rotation_matrix[0, 2] - rotation_matrix[2, 0]) / s
+        z = (rotation_matrix[1, 0] - rotation_matrix[0, 1]) / s
+    else:
+        max_val, max_ind = torch.max(torch.diag(rotation_matrix), dim=0)
+        s = 2 * torch.sqrt(1 - trace + 2 * max_val)
+        if max_ind == 0:
+            w = (rotation_matrix[2, 1] - rotation_matrix[1, 2]) / s
+            x = s / 4
+            y = (rotation_matrix[0, 1] + rotation_matrix[1, 0]) / s
+            z = (rotation_matrix[0, 2] + rotation_matrix[2, 0]) / s
+        elif max_ind == 1:
+            w = (rotation_matrix[0, 2] - rotation_matrix[2, 0]) / s
+            x = (rotation_matrix[0, 1] + rotation_matrix[1, 0]) / s
+            y = s / 4
+            z = (rotation_matrix[1, 2] + rotation_matrix[2, 1]) / s
+        else:
+            w = (rotation_matrix[1, 0] - rotation_matrix[0, 1]) / s
+            x = (rotation_matrix[0, 2] + rotation_matrix[2, 0]) / s
+            y = (rotation_matrix[1, 2] + rotation_matrix[2, 1]) / s
+            z = s / 4
+    return torch.tensor([w, x, y, z]).unsqueeze_(0)
 
 
 def quat_to_rotmat(quat):
