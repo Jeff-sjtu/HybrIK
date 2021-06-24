@@ -47,7 +47,7 @@ python setup.py develop
 
 ## Download models
 * Download the SMPL model `basicModel_neutral_lbs_10_207_0_v1.0.0.pkl` from [here](https://smpl.is.tue.mpg.de/) at `common/utils/smplpytorch/smplpytorch/native/models`.
-* Download our pretrained model from [ [Google Drive]() | [Baidu]() ].
+* Download our pretrained model from [ [Google Drive](https://drive.google.com/file/d/1SoVJ3dniVpBi2NkYfa2S8XEv0TGIK26l/view?usp=sharing) | [Baidu]() ].
 
 ## Fetch data
 Download *Human3.6M*, *MPI-INF-3DHP*, *3DPW* and *MSCOCO* datasets. You need to follow directory structure of the `data` as below.
