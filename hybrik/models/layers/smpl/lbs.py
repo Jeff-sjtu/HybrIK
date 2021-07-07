@@ -956,8 +956,8 @@ def single_rotation_matrix_to_quaternion_torch(rotation_matrix):
             x = (rotation_matrix[0, 2] + rotation_matrix[2, 0]) / s
             y = (rotation_matrix[1, 2] + rotation_matrix[2, 1]) / s
             z = s / 4
-    return torch.tensor([w, x, y, z]).unsqueeze_(0)
-
+    # return torch.tensor([w, x, y, z]).unsqueeze_(0)
+    return torch.stack([w, x, y, z], dim=1)
 
 def quat_to_rotmat(quat):
     """Convert quaternion coefficients to rotation matrix.
