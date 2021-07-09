@@ -924,7 +924,7 @@ def rotmat_to_quat(rotmat):
     flag = 1 + trace > 0
 
     # pos
-    s = 2 * torch.sqrt(1 + trace[flag])
+    s = 2 * torch.sqrt(1 + trace[flag]) + 1e-16
     quaternion[flag, 0] = s / 4
     quaternion[flag, 1] = (rotmat[flag, 2, 1] - rotmat[flag, 1, 2]) / s
     quaternion[flag, 2] = (rotmat[flag, 0, 2] - rotmat[flag, 2, 0]) / s
@@ -933,7 +933,7 @@ def rotmat_to_quat(rotmat):
     # neg
     diag = torch.stack([rotmat[:, 0, 0], rotmat[:, 1, 1], rotmat[:, 2, 2]])
     max_val, max_ind = torch.max(diag, dim=0)
-    s = 2 * torch.sqrt(1 - trace + 2 * max_val)
+    s[~flag] = 2 * torch.sqrt(1 - trace[~flag] + 2 * max_val[~flag]) + 1e-16
 
     f0 = ~flag * (max_ind == 0)
     s0 = s[f0]
