@@ -80,7 +80,7 @@ def find_dynamic_lmk_idx_and_bcoords(vertices, pose, dynamic_lmk_faces_idx,
 
     rel_rot_mat = torch.eye(
         3, device=vertices.device, dtype=dtype).unsqueeze_(dim=0).repeat(
-            batch_size, 1, 1)
+        batch_size, 1, 1)
     for idx in range(len(neck_kin_chain)):
         rel_rot_mat = torch.bmm(rot_mats[:, idx], rel_rot_mat)
 
@@ -706,7 +706,8 @@ def batch_inverse_kinematics_transform(
             axis_norm = torch.norm(axis, dim=1, keepdim=True)
 
             # (B, 1, 1)
-            cos = torch.sum(child_rest_loc * child_final_loc, dim=1, keepdim=True) / (child_rest_norm * child_final_norm + 1e-8)
+            cos = torch.sum(child_rest_loc * child_final_loc, dim=1, keepdim=True) / (
+                    child_rest_norm * child_final_norm + 1e-8)
             sin = axis_norm / (child_rest_norm * child_final_norm + 1e-8)
 
             # (B, 3, 1)
@@ -750,7 +751,6 @@ def batch_inverse_kinematics_transform(
 
 
 def batch_get_pelvis_orient_svd(rel_pose_skeleton, rel_rest_pose, parents, children, dtype):
-
     pelvis_child = [int(children[0])]
     for i in range(1, parents.shape[0]):
         if parents[i] == 0 and i not in pelvis_child:
@@ -826,7 +826,7 @@ def batch_get_pelvis_orient(rel_pose_skeleton, rel_rest_pose, parents, children,
 
     # (B, 1, 1)
     cos = torch.sum(center_rest_loc * center_final_loc, dim=1, keepdim=True) / \
-        (center_rest_loc_norm * center_final_loc_norm + 1e-8)
+          (center_rest_loc_norm * center_final_loc_norm + 1e-8)
     sin = axis_norm / (center_rest_loc_norm * center_final_loc_norm + 1e-8)
 
     assert torch.sum(torch.isnan(cos)
@@ -852,7 +852,6 @@ def batch_get_pelvis_orient(rel_pose_skeleton, rel_rest_pose, parents, children,
 
 
 def batch_get_3children_orient_svd(rel_pose_skeleton, rel_rest_pose, rot_mat_chain_parent, children_list, dtype):
-
     rest_mat = []
     target_mat = []
     for c, child in enumerate(children_list):
@@ -920,44 +919,45 @@ def rotmat_to_quat(rotmat):
     Returns:
         Quaternion: size is [B, 4] <===> (w, x, y, z)
     """
-    return torch.cat([single_rotation_matrix_to_quaternion_torch(mat) for mat in rotmat], dim=0)
+    quaternion = torch.zeros([rotmat.size(0), 4]).to(rotmat.device)
+    trace = rotmat[:, 0, 0] + rotmat[:, 1, 1] + rotmat[:, 2, 2]
+    flag = 1 + trace > 0
 
+    # pos
+    s = 2 * torch.sqrt(1 + trace[flag])
+    quaternion[flag, 0] = s / 4
+    quaternion[flag, 1] = (rotmat[flag, 2, 1] - rotmat[flag, 1, 2]) / s
+    quaternion[flag, 2] = (rotmat[flag, 0, 2] - rotmat[flag, 2, 0]) / s
+    quaternion[flag, 3] = (rotmat[flag, 1, 0] - rotmat[flag, 0, 1]) / s
 
-def single_rotation_matrix_to_quaternion_torch(rotation_matrix):
-    """Convert rotation matrix to quaternion coefficient.
-    Args:
-        rotation_matrix: size is [3, 3]
-    Returns:
-        Quaternion: size is [1, 4] <===> (w, x, y, z)
-    """
-    assert rotation_matrix.shape == (3, 3)
-    trace = rotation_matrix.trace()
-    if 1 + trace > 0:
-        s = 2 * torch.sqrt(1 + trace)
-        w = s / 4
-        x = (rotation_matrix[2, 1] - rotation_matrix[1, 2]) / s
-        y = (rotation_matrix[0, 2] - rotation_matrix[2, 0]) / s
-        z = (rotation_matrix[1, 0] - rotation_matrix[0, 1]) / s
-    else:
-        max_val, max_ind = torch.max(torch.diag(rotation_matrix), dim=0)
-        s = 2 * torch.sqrt(1 - trace + 2 * max_val)
-        if max_ind == 0:
-            w = (rotation_matrix[2, 1] - rotation_matrix[1, 2]) / s
-            x = s / 4
-            y = (rotation_matrix[0, 1] + rotation_matrix[1, 0]) / s
-            z = (rotation_matrix[0, 2] + rotation_matrix[2, 0]) / s
-        elif max_ind == 1:
-            w = (rotation_matrix[0, 2] - rotation_matrix[2, 0]) / s
-            x = (rotation_matrix[0, 1] + rotation_matrix[1, 0]) / s
-            y = s / 4
-            z = (rotation_matrix[1, 2] + rotation_matrix[2, 1]) / s
-        else:
-            w = (rotation_matrix[1, 0] - rotation_matrix[0, 1]) / s
-            x = (rotation_matrix[0, 2] + rotation_matrix[2, 0]) / s
-            y = (rotation_matrix[1, 2] + rotation_matrix[2, 1]) / s
-            z = s / 4
-    # return torch.tensor([w, x, y, z]).unsqueeze_(0)
-    return torch.stack([w, x, y, z], dim=1)
+    # neg
+    diag = torch.stack([rotmat[:, 0, 0], rotmat[:, 1, 1], rotmat[:, 2, 2]])
+    max_val, max_ind = torch.max(diag, dim=0)
+    s = 2 * torch.sqrt(1 - trace + 2 * max_val)
+
+    f0 = ~flag * (max_ind == 0)
+    s0 = s[f0]
+    quaternion[f0, 0] = (rotmat[f0, 2, 1] - rotmat[f0, 1, 2]) / s0
+    quaternion[f0, 1] = s0 / 4
+    quaternion[f0, 2] = (rotmat[f0, 0, 1] + rotmat[f0, 1, 0]) / s0
+    quaternion[f0, 3] = (rotmat[f0, 0, 2] + rotmat[f0, 2, 0]) / s0
+
+    f1 = ~flag * (max_ind == 1)
+    s1 = s[f1]
+    quaternion[f1, 0] = (rotmat[f1, 0, 2] - rotmat[f1, 2, 0]) / s1
+    quaternion[f1, 1] = (rotmat[f1, 0, 1] + rotmat[f1, 1, 0]) / s1
+    quaternion[f1, 2] = s1 / 4
+    quaternion[f1, 3] = (rotmat[f1, 1, 2] + rotmat[f1, 2, 1]) / s1
+
+    f2 = ~flag * (max_ind == 2)
+    s2 = s[f2]
+    quaternion[f2, 0] = (rotmat[f2, 1, 0] - rotmat[f2, 0, 1]) / s2
+    quaternion[f2, 1] = (rotmat[f2, 0, 2] + rotmat[f2, 2, 0]) / s2
+    quaternion[f2, 2] = (rotmat[f2, 1, 2] + rotmat[f2, 2, 1]) / s2
+    quaternion[f2, 3] = s2 / 4
+
+    return quaternion
+
 
 def quat_to_rotmat(quat):
     """Convert quaternion coefficients to rotation matrix.
