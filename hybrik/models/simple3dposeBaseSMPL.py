@@ -12,7 +12,7 @@ from .layers.smpl.SMPL import SMPL_layer
 ModelOutput = namedtuple(
     typename='ModelOutput',
     field_names=['pred_shape', 'pred_theta_mats', 'pred_phi', 'pred_delta_shape', 'pred_leaf',
-                 'pred_uvd_jts_29', 'pred_xyz_jts_24', 'pred_xyz_jts_24_struct',
+                 'pred_uvd_jts', 'pred_xyz_jts_24', 'pred_xyz_jts_24_struct',
                  'pred_xyz_jts_17', 'pred_vertices', 'maxvals']
 )
 ModelOutput.__new__.__defaults__ = (None,) * len(ModelOutput._fields)

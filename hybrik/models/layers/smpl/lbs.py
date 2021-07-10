@@ -706,8 +706,7 @@ def batch_inverse_kinematics_transform(
             axis_norm = torch.norm(axis, dim=1, keepdim=True)
 
             # (B, 1, 1)
-            cos = torch.sum(child_rest_loc * child_final_loc, dim=1, keepdim=True) / (
-                    child_rest_norm * child_final_norm + 1e-8)
+            cos = torch.sum(child_rest_loc * child_final_loc, dim=1, keepdim=True) / (child_rest_norm * child_final_norm + 1e-8)
             sin = axis_norm / (child_rest_norm * child_final_norm + 1e-8)
 
             # (B, 3, 1)
@@ -825,8 +824,7 @@ def batch_get_pelvis_orient(rel_pose_skeleton, rel_rest_pose, parents, children,
     axis_norm = torch.norm(axis, dim=1, keepdim=True)
 
     # (B, 1, 1)
-    cos = torch.sum(center_rest_loc * center_final_loc, dim=1, keepdim=True) / \
-          (center_rest_loc_norm * center_final_loc_norm + 1e-8)
+    cos = torch.sum(center_rest_loc * center_final_loc, dim=1, keepdim=True) / (center_rest_loc_norm * center_final_loc_norm + 1e-8)
     sin = axis_norm / (center_rest_loc_norm * center_final_loc_norm + 1e-8)
 
     assert torch.sum(torch.isnan(cos)
@@ -919,20 +917,23 @@ def rotmat_to_quat(rotmat):
     Returns:
         Quaternion: size is [B, 4] <===> (w, x, y, z)
     """
-    quaternion = torch.zeros([rotmat.size(0), 4]).to(rotmat.device)
+    quaternion = torch.zeros([rotmat.size(0), 4], device=rotmat.device)
     trace = rotmat[:, 0, 0] + rotmat[:, 1, 1] + rotmat[:, 2, 2]
     flag = 1 + trace > 0
+    s = torch.zeros_like(trace)
 
     # pos
-    s = 2 * torch.sqrt(1 + trace[flag]) + 1e-16
-    quaternion[flag, 0] = s / 4
-    quaternion[flag, 1] = (rotmat[flag, 2, 1] - rotmat[flag, 1, 2]) / s
-    quaternion[flag, 2] = (rotmat[flag, 0, 2] - rotmat[flag, 2, 0]) / s
-    quaternion[flag, 3] = (rotmat[flag, 1, 0] - rotmat[flag, 0, 1]) / s
+    s[flag] = 2 * torch.sqrt(1 + trace[flag]) + 1e-16
+    s_pos = s[flag]
+    quaternion[flag, 0] = s_pos / 4
+    quaternion[flag, 1] = (rotmat[flag, 2, 1] - rotmat[flag, 1, 2]) / s_pos
+    quaternion[flag, 2] = (rotmat[flag, 0, 2] - rotmat[flag, 2, 0]) / s_pos
+    quaternion[flag, 3] = (rotmat[flag, 1, 0] - rotmat[flag, 0, 1]) / s_pos
 
     # neg
     diag = torch.stack([rotmat[:, 0, 0], rotmat[:, 1, 1], rotmat[:, 2, 2]])
     max_val, max_ind = torch.max(diag, dim=0)
+
     s[~flag] = 2 * torch.sqrt(1 - trace[~flag] + 2 * max_val[~flag]) + 1e-16
 
     f0 = ~flag * (max_ind == 0)
