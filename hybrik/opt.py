@@ -1,9 +1,11 @@
-import os
 import argparse
 import logging
-from .utils.config import update_config
+import os
 from types import MethodType
 
+import torch
+
+from .utils.config import update_config
 
 parser = argparse.ArgumentParser(description='HybrIK Training')
 
@@ -67,6 +69,9 @@ cfg = update_config(opt.cfg)
 
 cfg['FILE_NAME'] = cfg_file_name
 cfg.TRAIN.DPG_STEP = [i - cfg.TRAIN.DPG_MILESTONE for i in cfg.TRAIN.DPG_STEP]
+num_gpu = torch.cuda.device_count()
+if cfg.TRAIN.WORLD_SIZE > num_gpu:
+    cfg.TRAIN.WORLD_SIZE = num_gpu
 opt.world_size = cfg.TRAIN.WORLD_SIZE
 opt.work_dir = './exp/{}/{}-{}/'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id)
 
