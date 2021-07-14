@@ -2,6 +2,11 @@
 
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/hybrik-a-hybrid-analytical-neural-inverse/3d-human-pose-estimation-on-3dpw)](https://paperswithcode.com/sota/3d-human-pose-estimation-on-3dpw?p=hybrik-a-hybrid-analytical-neural-inverse)
 
+<div align="center">
+<img src="assets/dancer1.gif" width="260" height="160"> <img src="assets/dancer2.gif" width="260" height="160">
+</div>
+
+
 This repo contains the code of our paper:
 
 **HybrIK: A Hybrid Analytical-Neural Inverse Kinematics Solution for 3D Human Pose and Shape Estimation**
@@ -15,11 +20,11 @@ This repo contains the code of our paper:
 
 In CVPR 2021
 
-![hybrik](hybrik.png)
+![hybrik](assets/hybrik.png)
 
 
 <div align="center">
-    <img src="decompose.gif", width="600" alt><br>
+    <img src="assets/decompose.gif", width="600" alt><br>
     Twist-and-Swing Decomposition
 </div>
 
