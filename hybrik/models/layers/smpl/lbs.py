@@ -679,16 +679,16 @@ def batch_inverse_kinematics_transform(
             )
             # (B, 3, 1)
             child_final_loc = final_pose_skeleton[:, children[i]] - rotate_rest_pose[:, i]
-            # orig_vec = rel_pose_skeleton[:, children[i]]
-            # template_vec = rel_rest_pose[:, children[i]]
+            orig_vec = rel_pose_skeleton[:, children[i]]
+            template_vec = rel_rest_pose[:, children[i]]
 
-            # norm_t = torch.norm(template_vec, dim=1, keepdim=True)
-            # orig_vec = orig_vec * norm_t / torch.norm(orig_vec, dim=1, keepdim=True)
+            norm_t = torch.norm(template_vec, dim=1, keepdim=True)
+            orig_vec = orig_vec * norm_t / torch.norm(orig_vec, dim=1, keepdim=True)
 
-            # diff = torch.norm(child_final_loc - orig_vec, dim=1, keepdim=True)
-            # big_diff_idx = torch.where(diff > 15)[0]
+            diff = torch.norm(child_final_loc - orig_vec, dim=1, keepdim=True)
+            big_diff_idx = torch.where(diff > 15 / 1000)[0]
 
-            # child_final_loc[big_diff_idx] = orig_vec[big_diff_idx]
+            child_final_loc[big_diff_idx] = orig_vec[big_diff_idx]
 
             child_final_loc = torch.matmul(
                 rot_mat_chain[parents[i]].transpose(1, 2),
