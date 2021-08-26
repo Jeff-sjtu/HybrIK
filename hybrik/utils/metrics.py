@@ -5,6 +5,9 @@ class NullWriter(object):
     def write(self, arg):
         pass
 
+    def flush(self):
+        pass
+
 
 class DataLogger(object):
     """Average data logger."""

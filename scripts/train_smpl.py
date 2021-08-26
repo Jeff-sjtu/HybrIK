@@ -53,7 +53,7 @@ def train(opt, train_loader, m, criterion, optimizer, writer):
         root = labels.pop('joint_root')
         depth_factor = labels.pop('depth_factor')
 
-        torch.autograd.set_detect_anomaly(True)
+        # torch.autograd.set_detect_anomaly(True)
         output = m(inps, trans_inv, intrinsic_param, root, depth_factor, None)
 
         loss = criterion(output, labels)
