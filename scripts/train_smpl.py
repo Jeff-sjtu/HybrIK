@@ -63,7 +63,13 @@ def train(opt, train_loader, m, criterion, optimizer, writer):
         label_masks_29 = labels['target_weight_29']
         label_masks_17 = labels['target_weight_17']
 
-        acc_uvd_29 = calc_coord_accuracy(pred_uvd_jts.cpu(), labels['target_uvd_29'].cpu(), label_masks_29.cpu(), hm_shape, num_joints=29)
+        if pred_uvd_jts.shape[1] != labels['target_uvd_29'].shape[1]:
+            pred_uvd_jts = pred_uvd_jts.cpu().reshape(pred_uvd_jts.shape[0], 24, 3)
+            gt_uvd_jts = labels['target_uvd_29'].cpu().reshape(pred_uvd_jts.shape[0], 29, 3)[:, :24, :]
+            gt_uvd_mask = label_masks_29.cpu().reshape(pred_uvd_jts.shape[0], 29, 3)[:, :24, :]
+            acc_uvd_29 = calc_coord_accuracy(pred_uvd_jts, gt_uvd_jts, gt_uvd_mask, hm_shape, num_joints=24)
+        else:
+            acc_uvd_29 = calc_coord_accuracy(pred_uvd_jts.cpu(), labels['target_uvd_29'].cpu(), label_masks_29.cpu(), hm_shape, num_joints=29)
         acc_xyz_17 = calc_coord_accuracy(pred_xyz_jts_17.cpu(), labels['target_xyz_17'].cpu(), label_masks_17.cpu(), hm_shape, num_joints=17, root_idx=root_idx_17)
 
         if isinstance(inps, list):
