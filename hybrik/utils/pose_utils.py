@@ -120,12 +120,18 @@ def pixel2cam_matrix(pixel_coord, intrinsic_param):
 
 def get_intrinsic_metrix(f, c, inv=False):
     intrinsic_metrix = np.zeros((3, 3)).astype(np.float32)
-    intrinsic_metrix[0, 0] = f[0]
-    intrinsic_metrix[0, 2] = c[0]
-    intrinsic_metrix[1, 1] = f[1]
-    intrinsic_metrix[1, 2] = c[1]
-    intrinsic_metrix[2, 2] = 1
 
     if inv:
-        intrinsic_metrix = np.linalg.inv(intrinsic_metrix).astype(np.float32)
+        intrinsic_metrix[0, 0] = 1.0 / f[0]
+        intrinsic_metrix[0, 2] = -c[0] / f[0]
+        intrinsic_metrix[1, 1] = 1.0 / f[1]
+        intrinsic_metrix[1, 2] = -c[1] / f[1]
+        intrinsic_metrix[2, 2] = 1
+    else:
+        intrinsic_metrix[0, 0] = f[0]
+        intrinsic_metrix[0, 2] = c[0]
+        intrinsic_metrix[1, 1] = f[1]
+        intrinsic_metrix[1, 2] = c[1]
+        intrinsic_metrix[2, 2] = 1
+
     return intrinsic_metrix
