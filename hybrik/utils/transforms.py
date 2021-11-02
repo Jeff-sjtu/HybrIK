@@ -1388,3 +1388,22 @@ def quat_to_rotmat(quat):
                           2 * wz + 2 * xy, w2 - x2 + y2 - z2, 2 * yz - 2 * wx,
                           2 * xz - 2 * wy, 2 * wx + 2 * yz, w2 - x2 - y2 + z2], dim=1).view(B, 3, 3)
     return rotMat
+
+
+def flip_twist(twist_phi, twist_weight, twist_pairs):
+    # twist_flip = -1 * twist_phi.copy() # 23 x 2
+    twist_flip = np.zeros_like(twist_phi)
+    weight_flip = twist_weight.copy()
+
+    twist_flip[:, 0] = twist_phi[:, 0].copy() # cos
+    twist_flip[:, 1] = -1 * twist_phi[:, 1].copy() # sin
+    for pair in twist_pairs:
+        idx0 = pair[0] - 1
+        idx1 = pair[1] - 1
+        twist_flip[idx0, :], twist_flip[idx1, :] = \
+            twist_flip[idx1, :], twist_flip[idx0, :].copy()
+        
+        weight_flip[idx0, :], weight_flip[idx1, :] = \
+            weight_flip[idx1, :], weight_flip[idx0, :].copy()
+    
+    return twist_flip, weight_flip

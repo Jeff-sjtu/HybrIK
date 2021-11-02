@@ -8,7 +8,7 @@ import torch
 from ..bbox import _box_to_center_scale, _center_scale_to_box
 from ..transforms import (addDPG, affine_transform, flip_joints_3d, flip_thetas, flip_xyz_joints_3d,
                           get_affine_transform, im_to_torch, batch_rodrigues_numpy,
-                          rotmat_to_quat_numpy)
+                          rotmat_to_quat_numpy, flip_twist)
 from ..pose_utils import get_intrinsic_metrix
 
 s_coco_2_smpl_jt = [
@@ -406,6 +406,7 @@ class SimpleTransform3DSMPL(object):
                 joints_17_xyz = flip_xyz_joints_3d(joints_17_xyz, self._joint_pairs_17)
                 joitns_24_xyz = flip_xyz_joints_3d(joitns_24_xyz, self._joint_pairs_24)
                 theta = flip_thetas(theta, self._joint_pairs_24)
+                twist_phi, twist_weight = flip_twist(twist_phi, twist_weight, self._joint_pairs_24)
                 center[0] = imgwidth - center[0] - 1
 
             # rotate global theta

@@ -255,7 +255,9 @@ class H36mSMPL(data.Dataset):
                 assert (np.cos(angle) - cos < 1e-6).all(), np.cos(angle) - cos
                 assert (np.sin(angle) - sin < 1e-6).all(), np.sin(angle) - sin
                 phi = np.stack((cos, sin), axis=1)
-                phi_weight = np.ones_like(phi)
+                # phi_weight = np.ones_like(phi)
+                phi_weight = (angle > -10) * 1.0 # invalid angles are set to be -999
+                phi_weight = np.stack([phi_weight, phi_weight], axis=1)
             else:
                 phi = np.zeros((23, 2))
                 phi_weight = np.zeros_like(phi)
