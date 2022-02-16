@@ -775,7 +775,13 @@ def batch_get_pelvis_orient_svd(rel_pose_skeleton, rel_rest_pose, parents, child
     rot_mat = torch.zeros_like(S)
     rot_mat[mask_zero == 0] = torch.eye(3, device=S.device)
 
-    rot_mat_non_zero = torch.bmm(V, U.transpose(1, 2))
+    # rot_mat_non_zero = torch.bmm(V, U.transpose(1, 2))
+    det_u_v = torch.det(torch.bmm(V, U.transpose(1, 2)))
+    det_modify_mat = torch.eye(3, device=U.device).unsqueeze(0).expand(U.shape[0], -1, -1).clone()
+    det_modify_mat[:, 2, 2] = det_u_v
+    rot_mat = torch.bmm(torch.bmm(V, det_modify_mat), U.transpose(1, 2))
+
+    rot_mat_non_zero = rot_mat
     rot_mat[mask_zero != 0] = rot_mat_non_zero
 
     assert torch.sum(torch.isnan(rot_mat)) == 0, ('rot_mat', rot_mat)
@@ -874,7 +880,12 @@ def batch_get_3children_orient_svd(rel_pose_skeleton, rel_rest_pose, rot_mat_cha
 
     U, _, V = torch.svd(S)
 
-    rot_mat = torch.bmm(V, U.transpose(1, 2))
+    # rot_mat = torch.bmm(V, U.transpose(1, 2))
+    det_u_v = torch.det(torch.bmm(V, U.transpose(1, 2)))
+    det_modify_mat = torch.eye(3, device=U.device).unsqueeze(0).expand(U.shape[0], -1, -1).clone()
+    det_modify_mat[:, 2, 2] = det_u_v
+    rot_mat = torch.bmm(torch.bmm(V, det_modify_mat), U.transpose(1, 2))
+    
     assert torch.sum(torch.isnan(rot_mat)) == 0, ('3children rot_mat', rot_mat)
     return rot_mat
 
