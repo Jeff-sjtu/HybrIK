@@ -775,7 +775,13 @@ def batch_get_pelvis_orient_svd(rel_pose_skeleton, rel_rest_pose, parents, child
     rot_mat = torch.zeros_like(S)
     rot_mat[mask_zero == 0] = torch.eye(3, device=S.device)
 
-    rot_mat_non_zero = torch.bmm(V, U.transpose(1, 2))
+    # rot_mat_non_zero = torch.bmm(V, U.transpose(1, 2))
+    det_u_v = torch.det(torch.bmm(V, U.transpose(1, 2)))
+    det_modify_mat = torch.eye(3, device=U.device).unsqueeze(0).expand(U.shape[0], -1, -1).clone()
+    det_modify_mat[:, 2, 2] = det_u_v
+    rot_mat = torch.bmm(torch.bmm(V, det_modify_mat), U.transpose(1, 2))
+
+    rot_mat_non_zero = rot_mat
     rot_mat[mask_zero != 0] = rot_mat_non_zero
 
     assert torch.sum(torch.isnan(rot_mat)) == 0, ('rot_mat', rot_mat)
@@ -874,7 +880,12 @@ def batch_get_3children_orient_svd(rel_pose_skeleton, rel_rest_pose, rot_mat_cha
 
     U, _, V = torch.svd(S)
 
-    rot_mat = torch.bmm(V, U.transpose(1, 2))
+    # rot_mat = torch.bmm(V, U.transpose(1, 2))
+    det_u_v = torch.det(torch.bmm(V, U.transpose(1, 2)))
+    det_modify_mat = torch.eye(3, device=U.device).unsqueeze(0).expand(U.shape[0], -1, -1).clone()
+    det_modify_mat[:, 2, 2] = det_u_v
+    rot_mat = torch.bmm(torch.bmm(V, det_modify_mat), U.transpose(1, 2))
+
     assert torch.sum(torch.isnan(rot_mat)) == 0, ('3children rot_mat', rot_mat)
     return rot_mat
 
@@ -911,54 +922,99 @@ def vectors2rotmat(vec_rest, vec_final, dtype):
     return rot_mat_loc
 
 
-def rotmat_to_quat(rotmat):
-    """Convert rotation matrix to quaternion coefficients.
-    Args:
-        rotmat: size is [B, 3, 3]
-    Returns:
-        Quaternion: size is [B, 4] <===> (w, x, y, z)
-    """
-    quaternion = torch.zeros([rotmat.size(0), 4], device=rotmat.device)
-    trace = rotmat[:, 0, 0] + rotmat[:, 1, 1] + rotmat[:, 2, 2]
-    flag = 1 + trace > 0
-    s = torch.zeros_like(trace)
+def rotmat_to_quat(rotation_matrix):
+    assert rotation_matrix.shape[1:] == (3, 3)
+    rot_mat = rotation_matrix.reshape(-1, 3, 3)
+    hom = torch.tensor([0, 0, 1], dtype=torch.float32,
+                       device=rotation_matrix.device)
+    hom = hom.reshape(1, 3, 1).expand(rot_mat.shape[0], -1, -1)
+    rotation_matrix = torch.cat([rot_mat, hom], dim=-1)
 
-    # pos
-    s[flag] = 2 * torch.sqrt(1 + trace[flag]) + 1e-16
-    s_pos = s[flag]
-    quaternion[flag, 0] = s_pos / 4
-    quaternion[flag, 1] = (rotmat[flag, 2, 1] - rotmat[flag, 1, 2]) / s_pos
-    quaternion[flag, 2] = (rotmat[flag, 0, 2] - rotmat[flag, 2, 0]) / s_pos
-    quaternion[flag, 3] = (rotmat[flag, 1, 0] - rotmat[flag, 0, 1]) / s_pos
-
-    # neg
-    diag = torch.stack([rotmat[:, 0, 0], rotmat[:, 1, 1], rotmat[:, 2, 2]])
-    max_val, max_ind = torch.max(diag, dim=0)
-
-    s[~flag] = 2 * torch.sqrt(1 - trace[~flag] + 2 * max_val[~flag]) + 1e-16
-
-    f0 = ~flag * (max_ind == 0)
-    s0 = s[f0]
-    quaternion[f0, 0] = (rotmat[f0, 2, 1] - rotmat[f0, 1, 2]) / s0
-    quaternion[f0, 1] = s0 / 4
-    quaternion[f0, 2] = (rotmat[f0, 0, 1] + rotmat[f0, 1, 0]) / s0
-    quaternion[f0, 3] = (rotmat[f0, 0, 2] + rotmat[f0, 2, 0]) / s0
-
-    f1 = ~flag * (max_ind == 1)
-    s1 = s[f1]
-    quaternion[f1, 0] = (rotmat[f1, 0, 2] - rotmat[f1, 2, 0]) / s1
-    quaternion[f1, 1] = (rotmat[f1, 0, 1] + rotmat[f1, 1, 0]) / s1
-    quaternion[f1, 2] = s1 / 4
-    quaternion[f1, 3] = (rotmat[f1, 1, 2] + rotmat[f1, 2, 1]) / s1
-
-    f2 = ~flag * (max_ind == 2)
-    s2 = s[f2]
-    quaternion[f2, 0] = (rotmat[f2, 1, 0] - rotmat[f2, 0, 1]) / s2
-    quaternion[f2, 1] = (rotmat[f2, 0, 2] + rotmat[f2, 2, 0]) / s2
-    quaternion[f2, 2] = (rotmat[f2, 1, 2] + rotmat[f2, 2, 1]) / s2
-    quaternion[f2, 3] = s2 / 4
-
+    quaternion = rotation_matrix_to_quaternion(rotation_matrix)
     return quaternion
+
+
+def rotation_matrix_to_quaternion(rotation_matrix, eps=1e-6):
+    """
+    This function is borrowed from https://github.com/kornia/kornia
+
+    Convert 3x4 rotation matrix to 4d quaternion vector
+
+    This algorithm is based on algorithm described in
+    https://github.com/KieranWynn/pyquaternion/blob/master/pyquaternion/quaternion.py#L201
+
+    Args:
+        rotation_matrix (Tensor): the rotation matrix to convert.
+
+    Return:
+        Tensor: the rotation in quaternion
+
+    Shape:
+        - Input: :math:`(N, 3, 4)`
+        - Output: :math:`(N, 4)`
+
+    Example:
+        >>> input = torch.rand(4, 3, 4)  # Nx3x4
+        >>> output = tgm.rotation_matrix_to_quaternion(input)  # Nx4
+    """
+    if not torch.is_tensor(rotation_matrix):
+        raise TypeError("Input type is not a torch.Tensor. Got {}".format(
+            type(rotation_matrix)))
+
+    if len(rotation_matrix.shape) > 3:
+        raise ValueError(
+            "Input size must be a three dimensional tensor. Got {}".format(
+                rotation_matrix.shape))
+    if not rotation_matrix.shape[-2:] == (3, 4):
+        raise ValueError(
+            "Input size must be a N x 3 x 4  tensor. Got {}".format(
+                rotation_matrix.shape))
+
+    rmat_t = torch.transpose(rotation_matrix, 1, 2)
+
+    mask_d2 = rmat_t[:, 2, 2] < eps
+
+    mask_d0_d1 = rmat_t[:, 0, 0] > rmat_t[:, 1, 1]
+    mask_d0_nd1 = rmat_t[:, 0, 0] < -rmat_t[:, 1, 1]
+
+    t0 = 1 + rmat_t[:, 0, 0] - rmat_t[:, 1, 1] - rmat_t[:, 2, 2]
+    q0 = torch.stack([rmat_t[:, 1, 2] - rmat_t[:, 2, 1],
+                      t0, rmat_t[:, 0, 1] + rmat_t[:, 1, 0],
+                      rmat_t[:, 2, 0] + rmat_t[:, 0, 2]], -1)
+    t0_rep = t0.repeat(4, 1).t()
+
+    t1 = 1 - rmat_t[:, 0, 0] + rmat_t[:, 1, 1] - rmat_t[:, 2, 2]
+    q1 = torch.stack([rmat_t[:, 2, 0] - rmat_t[:, 0, 2],
+                      rmat_t[:, 0, 1] + rmat_t[:, 1, 0],
+                      t1, rmat_t[:, 1, 2] + rmat_t[:, 2, 1]], -1)
+    t1_rep = t1.repeat(4, 1).t()
+
+    t2 = 1 - rmat_t[:, 0, 0] - rmat_t[:, 1, 1] + rmat_t[:, 2, 2]
+    q2 = torch.stack([rmat_t[:, 0, 1] - rmat_t[:, 1, 0],
+                      rmat_t[:, 2, 0] + rmat_t[:, 0, 2],
+                      rmat_t[:, 1, 2] + rmat_t[:, 2, 1], t2], -1)
+    t2_rep = t2.repeat(4, 1).t()
+
+    t3 = 1 + rmat_t[:, 0, 0] + rmat_t[:, 1, 1] + rmat_t[:, 2, 2]
+    q3 = torch.stack([t3, rmat_t[:, 1, 2] - rmat_t[:, 2, 1],
+                      rmat_t[:, 2, 0] - rmat_t[:, 0, 2],
+                      rmat_t[:, 0, 1] - rmat_t[:, 1, 0]], -1)
+    t3_rep = t3.repeat(4, 1).t()
+
+    mask_c0 = mask_d2 * mask_d0_d1
+    mask_c1 = mask_d2 * ~mask_d0_d1
+    mask_c2 = ~mask_d2 * mask_d0_nd1
+    mask_c3 = ~mask_d2 * ~mask_d0_nd1
+    mask_c0 = mask_c0.view(-1, 1).type_as(q0)
+    mask_c1 = mask_c1.view(-1, 1).type_as(q1)
+    mask_c2 = mask_c2.view(-1, 1).type_as(q2)
+    mask_c3 = mask_c3.view(-1, 1).type_as(q3)
+
+    q = q0 * mask_c0 + q1 * mask_c1 + q2 * mask_c2 + q3 * mask_c3
+    q /= torch.sqrt(t0_rep * mask_c0 + t1_rep * mask_c1 +  # noqa
+                    t2_rep * mask_c2 + t3_rep * mask_c3)  # noqa
+    q *= 0.5
+    return q
 
 
 def quat_to_rotmat(quat):
