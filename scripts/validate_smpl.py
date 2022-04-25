@@ -2,19 +2,20 @@
 import argparse
 import os
 import pickle as pk
+import sys
 
+import numpy as np
 import torch
 import torch.multiprocessing as mp
-from tqdm import tqdm
-import numpy as np
-
-from hybrik.datasets import H36mSMPL, PW3D, HP3D
+from hybrik.datasets import HP3D, PW3D, H36mSMPL
 from hybrik.models import builder
 from hybrik.utils.config import update_config
 from hybrik.utils.env import init_dist
+from hybrik.utils.metrics import NullWriter
 from hybrik.utils.transforms import flip, get_func_heatmap_to_coord
+from tqdm import tqdm
 
-parser = argparse.ArgumentParser(description='PyTorch Pose Estimation Validate')
+parser = argparse.ArgumentParser(description='HybrIK Validate')
 parser.add_argument('--cfg',
                     help='experiment configure file name',
                     required=True,
@@ -93,7 +94,10 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=32, pr
         depth_factor = labels.pop('depth_factor')
 
         # output = m(inps, trans_inv, intrinsic_param, joint_root, depth_factor, (gt_betas, None, None))
-        output = m(inps, trans_inv, intrinsic_param, root, depth_factor)
+        output = m(
+            inps,
+            trans_inv=trans_inv, intrinsic_param=intrinsic_param,
+            joint_root=root, depth_factor=depth_factor)
         if test_vertice:
             gt_betas = labels['target_beta']
             gt_thetas = labels['target_theta']
@@ -119,7 +123,9 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=32, pr
                 inps_flip = flip(inps)
 
             output_flip = m(
-                inps_flip, trans_inv, intrinsic_param, root, depth_factor,
+                inps_flip,
+                trans_inv=trans_inv, intrinsic_param=intrinsic_param,
+                joint_root=root, depth_factor=depth_factor,
                 flip_item=(pred_uvd_jts, test_phi, test_leaf, test_betas), flip_output=True)
 
             pred_uvd_jts_flip = output_flip.pred_uvd_jts
@@ -183,7 +189,7 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=32, pr
 
         tot_err_17 = gt_val_dataset.evaluate_xyz_17(kpt_all_pred, os.path.join('exp', 'test_3d_kpt.json'))
         try:
-            _ = gt_val_dataset.evaluate_uvd_24(kpt_all_pred, os.path.join('exp', 'test_3d_kpt.json'))
+            # _ = gt_val_dataset.evaluate_uvd_24(kpt_all_pred, os.path.join('exp', 'test_3d_kpt.json'))
             _ = gt_val_dataset.evaluate_xyz_24(kpt_all_pred, os.path.join('exp', 'test_3d_kpt.json'))
         except AttributeError:
             pass
@@ -207,6 +213,10 @@ def main_worker(gpu, opt, cfg):
         opt.gpu = gpu
 
     init_dist(opt)
+
+    if not opt.log:
+        null_writer = NullWriter()
+        sys.stdout = null_writer
 
     torch.backends.cudnn.benchmark = True
 
@@ -235,15 +245,18 @@ def main_worker(gpu, opt, cfg):
         ann_file='3DPW_test_new.json',
         train=False)
 
-    with torch.no_grad():
-        gt_tot_err = validate_gt(m, opt, cfg, gt_val_dataset_hp3d, heatmap_to_coord, opt.batch)
-    print(f'##### gt 3dhp err: {gt_tot_err} #####')
-    with torch.no_grad():
-        gt_tot_err = validate_gt(m, opt, cfg, gt_val_dataset_h36m, heatmap_to_coord, opt.batch)
-    print(f'##### gt h36m err: {gt_tot_err} #####')
+    print('##### Testing on 3DPW #####')
     with torch.no_grad():
         gt_tot_err = validate_gt(m, opt, cfg, gt_val_dataset_3dpw, heatmap_to_coord, opt.batch, test_vertice=True)
     print(f'##### gt 3dpw err: {gt_tot_err} #####')
+    # with torch.no_grad():
+    #     gt_tot_err = validate_gt(m, opt, cfg, gt_val_dataset_hp3d, heatmap_to_coord, opt.batch)
+    # print(f'##### gt 3dhp err: {gt_tot_err} #####')
+
+    print('##### Testing on Human3.6M #####')
+    with torch.no_grad():
+        gt_tot_err = validate_gt(m, opt, cfg, gt_val_dataset_h36m, heatmap_to_coord, opt.batch)
+    print(f'##### gt h36m err: {gt_tot_err} #####')
 
 
 if __name__ == "__main__":

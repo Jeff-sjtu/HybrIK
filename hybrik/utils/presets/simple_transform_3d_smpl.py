@@ -108,7 +108,7 @@ class SimpleTransform3DSMPL(object):
 
         self.bbox_3d_shape = dataset.bbox_3d_shape
         self._scale_mult = scale_mult
-        self.kinematic = dataset.kinematic
+        # self.kinematic = dataset.kinematic
         self.two_d = two_d
 
         if train:
@@ -119,6 +119,10 @@ class SimpleTransform3DSMPL(object):
             self.lower_body_ids = dataset.lower_body_ids
 
     def test_transform(self, src, bbox):
+        if isinstance(src, str):
+            import scipy.misc
+            src = scipy.misc.imread(src, mode='RGB')
+
         xmin, ymin, xmax, ymax = bbox
         center, scale = _box_to_center_scale(
             xmin, ymin, xmax - xmin, ymax - ymin, self._aspect_ratio, scale_mult=self._scale_mult)

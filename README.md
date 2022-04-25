@@ -3,7 +3,7 @@
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/hybrik-a-hybrid-analytical-neural-inverse/3d-human-pose-estimation-on-3dpw)](https://paperswithcode.com/sota/3d-human-pose-estimation-on-3dpw?p=hybrik-a-hybrid-analytical-neural-inverse)
 
 <div align="center">
-<img src="assets/dancer1.gif" width="260" height="160"> <img src="assets/dancer2.gif" width="260" height="160">
+<img src="assets/taiji.gif" width="260" height="160"> <img src="assets/dancer3.gif" width="260" height="160">
 </div>
 
 
@@ -36,11 +36,11 @@ In CVPR 2021
 
 ``` bash
 # 1. Create a conda virtual environment.
-conda create -n hybrik python=3.6 -y
+conda create -n hybrik python=3.7 -y
 conda activate hybrik
 
 # 2. Install PyTorch
-conda install pytorch==1.2.0 torchvision==0.4.0
+conda install pytorch==1.6.0 torchvision==0.7.0 -c pytorch
 
 # 3. Pull our code
 git clone https://github.com/Jeff-sjtu/HybrIK.git
@@ -52,7 +52,25 @@ python setup.py develop
 
 ## Download models
 * Download the SMPL model `basicModel_neutral_lbs_10_207_0_v1.0.0.pkl` from [here](https://smpl.is.tue.mpg.de/) at `common/utils/smplpytorch/smplpytorch/native/models`.
-* Download our pretrained model from [ [Google Drive](https://drive.google.com/file/d/1SoVJ3dniVpBi2NkYfa2S8XEv0TGIK26l/view?usp=sharing) | [Baidu](https://pan.baidu.com/s/13rPFHO6FWoy7DK066XY1Fw) (code: `qre2`) ].
+* Download our pretrained model (paper version) from [ [Google Drive](https://drive.google.com/file/d/1SoVJ3dniVpBi2NkYfa2S8XEv0TGIK26l/view?usp=sharing) | [Baidu](https://pan.baidu.com/s/13rPFHO6FWoy7DK066XY1Fw) (code: `qre2`) ].
+* Download our pretrained model (with predicted camera) from [ [Google Drive](https://drive.google.com/file/d/16Y_MGUynFeEzV8GVtKTE5AtkHSi3xsF9/view?usp=sharing) | [Baidu](https://pan.baidu.com/s/1kHTKQEKiPnrAKAUzOD-Xww) (code: `4qyv`) ].
+
+## Quick Start
+First make sure you download the pretrained model (with predicted camera) and place it in the `${ROOT}` directory, i.e., `./pretrained_w_cam.pth`.
+
+Visualize HybrIK on the video (run per frame):
+
+``` bash
+python scripts/demo_video.py --video-name examples/dance.mp4
+```
+
+
+Visualize HybrIK on images
+
+``` bash
+python scripts/demo_image.py --img-dir examples
+```
+
 
 ## Fetch data
 Download *Human3.6M*, *MPI-INF-3DHP*, *3DPW* and *MSCOCO* datasets. You need to follow directory structure of the `data` as below. Thanks to the great job done by Moon *et al.*, we use the Human3.6M images provided in [PoseNet](https://github.com/mks0601/3DMPPE_POSENET_RELEASE).

@@ -456,7 +456,7 @@ class H36mSMPL(data.Dataset):
         tot_err_z = np.mean(error_z)
         metric = 'PA MPJPE' if self.protocol == 1 else 'MPJPE'
 
-        eval_summary = f'XYZ_24 Protocol {self.protocol} error ({metric}) >> tot: {tot_err:2f}, tot_pa: {tot_err_align:2f}, x: {tot_err_x:2f}, y: {tot_err_y:.2f}, z: {tot_err_z:2f}\n'
+        eval_summary = f'XYZ_24 Protocol {self.protocol} error ({metric}) >> PA-MPJPE: {tot_err_align:2f} | MPJPE: {tot_err:2f}, x: {tot_err_x:2f}, y: {tot_err_y:.2f}, z: {tot_err_z:2f}\n'
 
         # error for each action
         for i in range(len(error_action)):
@@ -534,7 +534,7 @@ class H36mSMPL(data.Dataset):
         tot_err_z = np.mean(error_z)
         metric = 'PA MPJPE' if self.protocol == 1 else 'MPJPE'
 
-        eval_summary = f'XYZ_17 Protocol {self.protocol} error ({metric}) >> tot: {tot_err:2f}, tot_pa: {tot_err_align:2f}, x: {tot_err_x:2f}, y: {tot_err_y:.2f}, z: {tot_err_z:2f}\n'
+        eval_summary = f'XYZ_14 Protocol {self.protocol} error ({metric}) >> PA-MPJPE: {tot_err_align:2f} | MPJPE: {tot_err:2f}, x: {tot_err_x:2f}, y: {tot_err_y:.2f}, z: {tot_err_z:2f}\n'
 
         # error for each action
         for i in range(len(error_action)):

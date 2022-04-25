@@ -124,8 +124,8 @@ if __name__ == '__main__':
         install_requires=[
             'numpy', 'six', 'terminaltables', 'scipy==1.1.0',
             'cython', 'opencv-python==4.1.2.30', 'matplotlib', 'visdom',
-            'pycocotools', 'tqdm', 'tensorboardx', 'easydict',
-            'pyyaml', 'tb-nightly', 'future'
+            'pycocotools', 'tqdm', 'tensorboardx', 'easydict', 'chumpy',
+            'pyyaml', 'tb-nightly', 'future', 'opendr', 'ffmpeg-python'
         ],
         cmdclass={'build_ext': BuildExtension},
         zip_safe=False)

@@ -381,7 +381,7 @@ class PW3D(data.Dataset):
         tot_err_y = np.mean(error_y) * 1000
         tot_err_z = np.mean(error_z) * 1000
 
-        eval_summary = f'XYZ_24 >> tot: {tot_err:2f}, tot_pa: {tot_err_align:2f}, x: {tot_err_x:2f}, y: {tot_err_y:.2f}, z: {tot_err_z:2f}\n'
+        eval_summary = f'XYZ_24 PA-MPJPE: {tot_err_align:2f} | MPJPE: {tot_err:2f}, x: {tot_err_x:2f}, y: {tot_err_y:.2f}, z: {tot_err_z:2f}\n'
 
         print(eval_summary)
 
@@ -445,7 +445,7 @@ class PW3D(data.Dataset):
         tot_err_y = np.mean(error_y) * 1000
         tot_err_z = np.mean(error_z) * 1000
 
-        eval_summary = f'PA MPJPE >> tot: {tot_err_pa:2f}; MPJPE >> tot: {tot_err:2f}, x: {tot_err_x:2f}, y: {tot_err_y:.2f}, z: {tot_err_z:2f}\n'
+        eval_summary = f'XYZ_14 PA-MPJPE: {tot_err_pa:2f} | MPJPE: {tot_err:2f}, x: {tot_err_x:2f}, y: {tot_err_y:.2f}, z: {tot_err_z:2f}\n'
 
         print(eval_summary)
 
