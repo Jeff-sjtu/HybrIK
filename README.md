@@ -58,14 +58,14 @@ python setup.py develop
 ## Quick Start
 First make sure you download the pretrained model (with predicted camera) and place it in the `${ROOT}` directory, i.e., `./pretrained_w_cam.pth`.
 
-Visualize HybrIK on the video (run per frame):
+* Visualize HybrIK on **videos** (run in single frame):
 
 ``` bash
 python scripts/demo_video.py --video-name examples/dance.mp4
 ```
 
 
-Visualize HybrIK on images
+* Visualize HybrIK on **images**
 
 ``` bash
 python scripts/demo_image.py --img-dir examples
