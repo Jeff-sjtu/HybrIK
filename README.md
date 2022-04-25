@@ -20,6 +20,7 @@ This repo contains the code of our paper:
 
 In CVPR 2021
 
+
 ![hybrik](assets/hybrik.png)
 
 
@@ -27,6 +28,10 @@ In CVPR 2021
     <img src="assets/decompose.gif", width="600" alt><br>
     Twist-and-Swing Decomposition
 </div>
+
+## News
+The demo code is released!
+
 
 ## TODO
 - [x] Provide pretrained model
