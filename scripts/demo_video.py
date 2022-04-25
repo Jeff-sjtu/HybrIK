@@ -169,7 +169,7 @@ for img_path in tqdm(img_path_list):
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
     idx += 1
-    res_path = os.path.join(video_basename + '_result', f'image-{cnt:06d}.jpg')
+    res_path = os.path.join(video_basename + '_result', f'image-{idx:06d}.jpg')
     cv2.imwrite(res_path, image_vis)
 
 os.system(f"ffmpeg -r 25 -i ./{video_basename + '_result'}/image-%06d.jpg -vcodec mpeg4 -b:v {bitrate} ./res_{video_basename}.mp4")
