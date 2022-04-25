@@ -65,7 +65,7 @@ python scripts/demo_video.py --video-name examples/dance.mp4
 ```
 
 
-* Visualize HybrIK on **images**
+* Visualize HybrIK on **images**:
 
 ``` bash
 python scripts/demo_image.py --img-dir examples
@@ -115,9 +115,10 @@ Download the pretrained model [[Google Drive](https://drive.google.com/file/d/1S
 ## Citing
 If our code helps your research, please consider citing the following paper:
 
-    @inproceedings{li2020hybrik,
-        title={HybrIK: A Hybrid Analytical-Neural Inverse Kinematics Solution for 3D Human Pose and Shape Estimation},
+    @inproceedings{li2021hybrik,
+        title={Hybrik: A hybrid analytical-neural inverse kinematics solution for 3d human pose and shape estimation},
         author={Li, Jiefeng and Xu, Chao and Chen, Zhicun and Bian, Siyuan and Yang, Lixin and Lu, Cewu},
-        booktitle={CVPR},
+        booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+        pages={3383--3393},
         year={2021}
     }
