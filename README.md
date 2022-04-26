@@ -29,8 +29,8 @@ In CVPR 2021
     Twist-and-Swing Decomposition
 </div>
 
-## News
-The demo code is released!
+## News :triangular_flag_on_post:
+[2022/04/26] The demo code is released!
 
 
 ## TODO
@@ -60,7 +60,7 @@ python setup.py develop
 * Download our pretrained model (paper version) from [ [Google Drive](https://drive.google.com/file/d/1SoVJ3dniVpBi2NkYfa2S8XEv0TGIK26l/view?usp=sharing) | [Baidu](https://pan.baidu.com/s/13rPFHO6FWoy7DK066XY1Fw) (code: `qre2`) ].
 * Download our pretrained model (with predicted camera) from [ [Google Drive](https://drive.google.com/file/d/16Y_MGUynFeEzV8GVtKTE5AtkHSi3xsF9/view?usp=sharing) | [Baidu](https://pan.baidu.com/s/1kHTKQEKiPnrAKAUzOD-Xww) (code: `4qyv`) ].
 
-## Quick Start
+## Demo
 First make sure you download the pretrained model (with predicted camera) and place it in the `${ROOT}` directory, i.e., `./pretrained_w_cam.pth`.
 
 * Visualize HybrIK on **videos** (run in single frame):
@@ -115,6 +115,23 @@ Download the pretrained model [[Google Drive](https://drive.google.com/file/d/1S
 ``` bash
 ./scripts/validate_smpl.sh ./configs/256x192_adam_lr1e-3-res34_smpl_24_3d_base_2x_mix.yaml ./pretrained_res34.pth
 ```
+
+
+## Results
+
+<center>
+
+| Method | 3DPW | Human3.6M |
+|:-------|:-----:|:-------:|
+| SPIN | 59.2 | 41.1 |
+| VIBE | 56.5 | 41.5 |
+| VIBE *w. 3DPW* | 51.9 | 41.4 |
+| PARE | 49.3 | - |
+| PARE *w. 3DPW* | 46.4 | - |
+| **HybrIK** | **48.8** | **34.5** |
+| **HybrIK** *w. 3DPW* | **45.3** | **36.3** |
+
+</center>
 
 
 ## Citing
