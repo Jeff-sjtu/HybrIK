@@ -1,6 +1,8 @@
 # HybrIK
 
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/hybrik-a-hybrid-analytical-neural-inverse/3d-human-pose-estimation-on-3dpw)](https://paperswithcode.com/sota/3d-human-pose-estimation-on-3dpw?p=hybrik-a-hybrid-analytical-neural-inverse)
+<a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white"></a>
+<a href='https://colab.research.google.com/drive/1n41l7I2NxWseuruVQEU8he2XqzSXhu2f?usp=sharing' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a>
+
 
 <div align="center">
 <img src="assets/taiji.gif" width="260" height="160"> <img src="assets/dancer3.gif" width="260" height="160">
@@ -30,7 +32,11 @@ In CVPR 2021
 </div>
 
 ## News :triangular_flag_on_post:
-[2022/04/26] The demo code is released!
+[2022/04/27] <a href='https://colab.research.google.com/drive/1n41l7I2NxWseuruVQEU8he2XqzSXhu2f?usp=sharing' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a> is ready to use.
+
+[2022/04/26] Achieve SOTA results by adding the 3DPW dataset for training.
+
+[2022/04/25] The demo code is released!
 
 
 ## TODO
