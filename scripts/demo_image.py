@@ -10,8 +10,7 @@ from hybrik.models import builder
 from hybrik.utils.config import update_config
 from hybrik.utils.presets import SimpleTransform3DSMPL
 from hybrik.utils.render import SMPLRenderer
-from hybrik.utils.vis import get_one_box, vis_bbox, vis_smpl_3d
-from PIL import Image
+from hybrik.utils.vis import get_one_box, vis_smpl_3d
 from torchvision import transforms as T
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from tqdm import tqdm
@@ -37,6 +36,10 @@ parser.add_argument('--gpu',
                     type=int)
 parser.add_argument('--img-dir',
                     help='image folder',
+                    default='',
+                    type=str)
+parser.add_argument('--out-dir',
+                    help='output folder',
                     default='',
                     type=str)
 opt = parser.parse_args()
@@ -78,8 +81,8 @@ hybrik_model.eval()
 
 files = os.listdir(opt.img_dir)
 
-if not os.path.exists(os.path.join(opt.img_dir, 'res')):
-    os.makedirs(os.path.join(opt.img_dir, 'res'))
+if not os.path.exists(opt.out_dir):
+    os.makedirs(opt.out_dir)
 
 for file in tqdm(files):
     if not os.path.isdir(file) and file[-4:] in ['.jpg', '.png']:
@@ -125,5 +128,5 @@ for file in tqdm(files):
         image_vis = cv2.cvtColor(image_vis, cv2.COLOR_RGB2BGR)
 
 
-        res_path = os.path.join(opt.img_dir, 'res', 'res_' + basename)
+        res_path = os.path.join(opt.out_dir, basename)
         cv2.imwrite(res_path, image_vis)

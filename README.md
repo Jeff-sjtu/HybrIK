@@ -72,14 +72,14 @@ First make sure you download the pretrained model (with predicted camera) and pl
 * Visualize HybrIK on **videos** (run in single frame):
 
 ``` bash
-python scripts/demo_video.py --video-name examples/dance.mp4
+python scripts/demo_video.py --video-name examples/dance.mp4 --out-dir res_dance
 ```
 
 
 * Visualize HybrIK on **images**:
 
 ``` bash
-python scripts/demo_image.py --img-dir examples
+python scripts/demo_image.py --img-dir examples --out-dir res
 ```
 
 

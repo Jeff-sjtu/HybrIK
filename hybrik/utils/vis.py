@@ -56,15 +56,28 @@ def calc_iou(bbox1, bbox2):
     return iou
 
 
-def vis_bbox(img_path, bbox):
+def vis_bbox(image, bbox):
 
     x1, y1, x2, y2 = bbox
 
-    image = cv2.imread(img_path)
-    draw1 = cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
-    cv2.imshow('draw 1', draw1)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    bbox_img = cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 5)
+    bbox_img = pil_img.fromarray(bbox_img[:, :, :3].astype(np.uint8))
+
+    return np.asarray(bbox_img)
+
+
+def vis_2d(image, bbox, pts):
+
+    x1, y1, x2, y2 = bbox
+
+    image = cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (154, 201, 219), 5)
+
+    for pt in pts:
+        x, y = pt
+        image = cv2.circle(image, (int(x), int(y)), 3, (255, 136, 132), 3)
+    image = pil_img.fromarray(image[:, :, :3].astype(np.uint8))
+
+    return np.asarray(image)
 
 
 def vis_smpl_3d(pose_output, img, cam_root, f, c, renderer, color_id=0, cam_rt=np.zeros(3),

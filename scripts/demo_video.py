@@ -12,8 +12,7 @@ from hybrik.models import builder
 from hybrik.utils.config import update_config
 from hybrik.utils.presets import SimpleTransform3DSMPL
 from hybrik.utils.render import SMPLRenderer
-from hybrik.utils.vis import get_max_iou_box, get_one_box, vis_smpl_3d
-from PIL import Image
+from hybrik.utils.vis import get_max_iou_box, get_one_box, vis_2d, vis_smpl_3d
 from torchvision import transforms as T
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from tqdm import tqdm
@@ -54,6 +53,11 @@ parser.add_argument('--video-name',
                     help='video name',
                     default='',
                     type=str)
+parser.add_argument('--out-dir',
+                    help='output folder',
+                    default='',
+                    type=str)
+
 opt = parser.parse_args()
 
 
@@ -94,28 +98,29 @@ hybrik_model.eval()
 print('### Extract Image...')
 video_basename = os.path.basename(opt.video_name).split('.')[0]
 
-if not os.path.exists(video_basename):
-    os.makedirs(video_basename)
-if not os.path.exists(video_basename + '_result'):
-    os.makedirs(video_basename + '_result')
+if not os.path.exists(opt.out_dir):
+    os.makedirs(opt.out_dir)
+if not os.path.exists(os.path.join(opt.out_dir, 'raw_images')):
+    os.makedirs(os.path.join(opt.out_dir, 'raw_images'))
+if not os.path.exists(os.path.join(opt.out_dir, 'res_images')):
+    os.makedirs(os.path.join(opt.out_dir, 'res_images'))
+if not os.path.exists(os.path.join(opt.out_dir, 'res_2d_images')):
+    os.makedirs(os.path.join(opt.out_dir, 'res_2d_images'))
 
 info = get_video_info(opt.video_name)
 bitrate = info['bit_rate']
-os.system(f'ffmpeg -i {opt.video_name} {video_basename}/{video_basename}-%06d.jpg')
+os.system(f'ffmpeg -i {opt.video_name} {opt.out_dir}/raw_images/{video_basename}-%06d.jpg')
 
 
-files = os.listdir(video_basename)
+files = os.listdir(f'{opt.out_dir}/raw_images')
 files.sort()
-
-# if not os.path.exists(os.path.join(opt.img_dir, 'res')):
-#     os.makedirs(os.path.join(opt.img_dir, 'res'))
 
 img_path_list = []
 
 for file in tqdm(files):
     if not os.path.isdir(file) and file[-4:] in ['.jpg', '.png']:
 
-        img_path = os.path.join(video_basename, file)
+        img_path = os.path.join(opt.out_dir, 'raw_images', file)
         img_path_list.append(img_path)
 
 prev_box = None
@@ -144,21 +149,21 @@ for img_path in tqdm(img_path_list):
     pose_input, bbox = transformation.test_transform(img_path, tight_bbox)
     pose_input = pose_input.to(opt.gpu)[None, :, :, :]
     pose_output = hybrik_model(pose_input)
+    uv_29 = pose_output.pred_uvd_jts.reshape(29, 3)[:, :2]
 
     # Visualization
-    image = input_image
+    image = input_image.copy()
     img_size = (image.shape[0], image.shape[1])
     focal = np.array([1000, 1000])
-    bbox = xyxy2xywh(bbox)
-    princpt = [bbox[0], bbox[1]]
-
+    bbox_xywh = xyxy2xywh(bbox)
+    princpt = [bbox_xywh[0], bbox_xywh[1]]
 
     renderer = SMPLRenderer(faces=hybrik_model.smpl.faces,
                             img_size=img_size, focal=focal,
                             princpt=princpt)
 
     transl = pose_output.transl.detach().cpu().numpy().squeeze()
-    transl[2] = transl[2] * 256 / bbox[2]
+    transl[2] = transl[2] * 256 / bbox_xywh[2]
 
     image_vis = vis_smpl_3d(
         pose_output, image, cam_root=transl,
@@ -169,7 +174,18 @@ for img_path in tqdm(img_path_list):
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
     idx += 1
-    res_path = os.path.join(video_basename + '_result', f'image-{idx:06d}.jpg')
+    res_path = os.path.join(opt.out_dir, 'res_images', f'image-{idx:06d}.jpg')
     cv2.imwrite(res_path, image_vis)
 
-os.system(f"ffmpeg -r 25 -i ./{video_basename + '_result'}/image-%06d.jpg -vcodec mpeg4 -b:v {bitrate} ./res_{video_basename}.mp4")
+    # vis 2d
+    pts = uv_29 * bbox_xywh[2]
+    pts[:, 0] = pts[:, 0] + bbox_xywh[0]
+    pts[:, 1] = pts[:, 1] + bbox_xywh[1]
+    image = input_image.copy()
+    bbox_img = vis_2d(image, tight_bbox, pts)
+    bbox_img = cv2.cvtColor(bbox_img, cv2.COLOR_RGB2BGR)
+    res_path = os.path.join(opt.out_dir, 'res_2d_images', f'image-{idx:06d}.jpg')
+    cv2.imwrite(res_path, bbox_img)
+
+os.system(f"ffmpeg -r 25 -i ./{opt.out_dir}/res_images/image-%06d.jpg -vcodec mpeg4 -b:v {bitrate} ./{opt.out_dir}/res_{video_basename}.mp4")
+os.system(f"ffmpeg -r 25 -i ./{opt.out_dir}/res_2d_images/image-%06d.jpg -vcodec mpeg4 -b:v {bitrate} ./{opt.out_dir}/res_2d_{video_basename}.mp4")
