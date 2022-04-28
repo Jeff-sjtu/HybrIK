@@ -16,6 +16,9 @@ def get_one_box(det_output, thrd=0.9):
             max_bbox = [float(x) for x in bbox]
             max_area = area
 
+    if max_bbox is None:
+        return get_one_box(det_output, thrd=thrd - 0.1)
+
     return max_bbox
 
 
