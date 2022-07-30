@@ -9,7 +9,7 @@ import torch.utils.data as data
 from pycocotools.coco import COCO
 from hybrik.utils.bbox import bbox_clip_xyxy, bbox_xywh_to_xyxy
 from hybrik.utils.pose_utils import pixel2cam, reconstruction_error
-from hybrik.utils.presets import SimpleTransform3DSMPL
+from hybrik.utils.presets import SimpleTransform3DSMPL, SimpleTransform3DSMPLCam
 
 
 class PW3D(data.Dataset):
@@ -31,7 +31,6 @@ class PW3D(data.Dataset):
     EVAL_JOINTS = [6, 5, 4, 1, 2, 3, 16, 15, 14, 11, 12, 13, 8, 10]
 
     num_joints = 17
-    bbox_3d_shape = (2, 2, 2)
     joints_name_17 = (
         'Pelvis',                               # 0
         'L_Hip', 'L_Knee', 'L_Ankle',           # 3
@@ -86,6 +85,9 @@ class PW3D(data.Dataset):
         self._train = train
         self._dpg = dpg
 
+        bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
+        self.bbox_3d_shape = [item * 1e-3 for item in bbox_3d_shape] # millimeter -> meter
+
         self._scale_factor = cfg.DATASET.SCALE_FACTOR
         self._color_factor = cfg.DATASET.COLOR_FACTOR
         self._rot = cfg.DATASET.ROT_FACTOR
@@ -124,17 +126,30 @@ class PW3D(data.Dataset):
 
         self._items, self._labels = self._lazy_load_json()
 
-        self.transformation = SimpleTransform3DSMPL(
-            self, scale_factor=self._scale_factor,
-            color_factor=self._color_factor,
-            occlusion=self._occlusion,
-            input_size=self._input_size,
-            output_size=self._output_size,
-            depth_dim=self._depth_dim,
-            bbox_3d_shape=self.bbox_3d_shape,
-            rot=self._rot, sigma=self._sigma,
-            train=self._train, add_dpg=self._dpg,
-            loss_type=self._loss_type)
+        if cfg.MODEL.EXTRA.PRESET == 'simple_smpl_3d':
+            self.transformation = SimpleTransform3DSMPL(
+                self, scale_factor=self._scale_factor,
+                color_factor=self._color_factor,
+                occlusion=self._occlusion,
+                input_size=self._input_size,
+                output_size=self._output_size,
+                depth_dim=self._depth_dim,
+                bbox_3d_shape=self.bbox_3d_shape,
+                rot=self._rot, sigma=self._sigma,
+                train=self._train, add_dpg=self._dpg,
+                loss_type=self._loss_type)
+        elif cfg.MODEL.EXTRA.PRESET == 'simple_smpl_3d_cam':
+            self.transformation = SimpleTransform3DSMPLCam(
+                self, scale_factor=self._scale_factor,
+                color_factor=self._color_factor,
+                occlusion=self._occlusion,
+                input_size=self._input_size,
+                output_size=self._output_size,
+                depth_dim=self._depth_dim,
+                bbox_3d_shape=self.bbox_3d_shape,
+                rot=self._rot, sigma=self._sigma,
+                train=self._train, add_dpg=self._dpg,
+                loss_type=self._loss_type, scale_mult=1)
 
     def __getitem__(self, idx):
         # get image id

@@ -1,6 +1,7 @@
 import bisect
 import random
 
+import numpy as np
 import torch
 import torch.utils.data as data
 
@@ -21,16 +22,19 @@ s_mpii_2_smpl_jt = [
     -1, -1
 ]
 s_3dhp_2_smpl_jt = [
-    4, -1, -1,
-    -1, 19, 24,
-    -1, 20, 25,
-    -1, -1, -1,  # TODO: foot point
-    5, -1, -1,
-    -1,
-    9, 14,
-    10, 15,
-    11, 16,
-    -1, -1
+    4, -1, -1, # pelvis, _, _
+    -1, 19, 24, # _, left_knee, right_knee
+    -1, 20, 25, # _, left_ankle, right_ankle
+    -1, -1, -1,  # _, _, _
+    5, -1, -1, # neck, _, _
+    -1, # _
+    9, 14, # left shoulder, right_shoulder
+    10, 15, # left elbow, right elbow
+    11, 16, # left wrist, right wrist
+    -1, -1,
+    # 7, # head top
+    # -1, -1, # _, _
+    # 21, 26 # left foot, right foot
 ]
 s_coco_2_smpl_jt = [
     -1, -1, -1,
@@ -45,10 +49,20 @@ s_coco_2_smpl_jt = [
     -1, -1
 ]
 
+neighbour_kpts = [
+    [1, 2, 3], [0, 4], [0, 5], [0, 6], # 3
+    [1, 7], [2, 8], [3, 9], [4, 10], # 7
+    [5, 11], [6, 12, 13, 14], [7], [8], # 11
+    [9, 15], [9, 16], [9, 17], [12], # 15
+    [13, 18], [14, 19], [16, 20], [17, 21], # 19
+    [18, 22], [19, 23], [20], [21], # 23
+    [15], [22], [23], [10], [11] # 28
+]
+
 s_smpl24_jt_num = 24
 
 
-class MixDataset(data.Dataset):
+class MixDatasetCam(data.Dataset):
     CLASSES = ['person']
     EVAL_JOINTS = [6, 5, 4, 1, 2, 3, 16, 15, 14, 11, 12, 13, 8, 10]
 
@@ -91,7 +105,12 @@ class MixDataset(data.Dataset):
         'joint_root',
         'target_twist',
         'target_twist_weight',
-        'depth_factor'
+        'depth_factor',
+        'target_xyz_weight_24',
+        'camera_scale',
+        'camera_trans',
+        'camera_valid',
+        'camera_error'
     ])
 
     def __init__(self,
@@ -147,6 +166,8 @@ class MixDataset(data.Dataset):
         self.evaluate_uvd_24 = self.db0.evaluate_uvd_24
         self.evaluate_xyz_24 = self.db0.evaluate_xyz_24
 
+        self.out_size = 64
+
     @staticmethod
     def cumsum(sequence):
         r, s = [], 0
@@ -178,16 +199,20 @@ class MixDataset(data.Dataset):
 
         img, target, img_id, bbox = self._subsets[dataset_idx][sample_idx]
 
-        if dataset_idx > 0:
+        if dataset_idx > 0 and dataset_idx < 3:
             # COCO, 3DHP
             label_jts_origin = target.pop('target')
             label_jts_mask_origin = target.pop('target_weight')
+
+            # label_xyz_origin = target.pop('target_xyz')
+            # label_xyz_mask_origin = target.pop('target_xyz_weight')
 
             label_uvd_29 = torch.zeros(29, 3)
             label_xyz_24 = torch.zeros(24, 3)
             label_uvd_29_mask = torch.zeros(29, 3)
             label_xyz_17 = torch.zeros(17, 3)
             label_xyz_17_mask = torch.zeros(17, 3)
+            label_xyz_29_mask = torch.zeros(29, 3)
 
             if dataset_idx == 1:
                 # COCO
@@ -206,6 +231,9 @@ class MixDataset(data.Dataset):
                 # 3DHP
                 assert label_jts_origin.dim() == 1 and label_jts_origin.shape[0] == 28 * 3, label_jts_origin.shape
 
+                label_xyz_origin = target.pop('target_xyz').reshape(28, 3)
+                label_xyz_mask_origin = target.pop('target_xyz_weight').reshape(28, 3)
+
                 label_jts_origin = label_jts_origin.reshape(28, 3)
                 label_jts_mask_origin = label_jts_mask_origin.reshape(28, 3)
 
@@ -215,6 +243,8 @@ class MixDataset(data.Dataset):
                     if id2 >= 0:
                         label_uvd_29[id1, :3] = label_jts_origin[id2, :3].clone()
                         label_uvd_29_mask[id1, :3] = label_jts_mask_origin[id2, :3].clone()
+                        label_xyz_24[id1, :3] = label_xyz_origin[id2, :3].clone()
+                        label_xyz_29_mask[id1, :3] = label_xyz_mask_origin[id2, :3].clone()
 
             label_uvd_29 = label_uvd_29.reshape(-1)
             label_xyz_24 = label_xyz_24.reshape(-1)
@@ -222,6 +252,7 @@ class MixDataset(data.Dataset):
             label_uvd_29_mask = label_uvd_29_mask.reshape(-1)
             label_xyz_17 = label_xyz_17.reshape(-1)
             label_xyz_17_mask = label_xyz_17_mask.reshape(-1)
+            label_xyz_24_mask = label_xyz_29_mask[:24, :].reshape(-1)
 
             target['target_uvd_29'] = label_uvd_29
             target['target_xyz_24'] = label_xyz_24
@@ -235,8 +266,11 @@ class MixDataset(data.Dataset):
             target['target_theta_weight'] = torch.zeros(24 * 4)
             target['target_twist'] = torch.zeros(23, 2)
             target['target_twist_weight'] = torch.zeros(23, 2)
-        else:
-            assert set(target.keys()).issubset(self.data_domain), (set(target.keys()) - self.data_domain, self.data_domain - set(target.keys()),)
+            target['target_xyz_weight_24'] = label_xyz_24_mask
+        # else:
+        #     assert set(target.keys()).issubset(self.data_domain), (set(target.keys()) - self.data_domain, self.data_domain - set(target.keys()),)
         target.pop('type')
+
+        target['dataset_idx'] = dataset_idx
 
         return img, target, img_id, bbox

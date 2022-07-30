@@ -957,6 +957,36 @@ def flip_xyz_joints_3d(joints_3d, joint_pairs):
     return joints
 
 
+def flip_cam_xyz_joints_3d(joints_3d, joint_pairs):
+    """Flip 3d xyz joints.
+
+    Parameters
+    ----------
+    joints_3d : numpy.ndarray
+        Joints in shape (num_joints, 3)
+    joint_pairs : list
+        List of joint pairs.
+
+    Returns
+    -------
+    numpy.ndarray
+        Flipped 3d joints with shape (num_joints, 3)
+
+    """
+    root_jts = joints_3d[:1].copy()
+    joints = (joints_3d - root_jts)
+    assert joints_3d.ndim in (2, 3)
+
+    # flip horizontally
+    joints[:, 0] = -1 * joints[:, 0]
+
+    # change left-right parts
+    for pair in joint_pairs:
+        joints[pair[0], :], joints[pair[1], :] = joints[pair[1], :], joints[pair[0], :].copy()
+
+    return joints + root_jts
+
+
 def flip_thetas(thetas, theta_pairs):
     """Flip thetas.
 
@@ -977,12 +1007,32 @@ def flip_thetas(thetas, theta_pairs):
     # reflect horizontally
     thetas_flip[:, 1] = -1 * thetas_flip[:, 1]
     thetas_flip[:, 2] = -1 * thetas_flip[:, 2]
+    # thetas_flip[:, 0] = -1 * thetas_flip[:, 0]
     # change left-right parts
     for pair in theta_pairs:
         thetas_flip[pair[0], :], thetas_flip[pair[1], :] = \
             thetas_flip[pair[1], :], thetas_flip[pair[0], :].copy()
 
     return thetas_flip
+
+
+def flip_twist(twist_phi, twist_weight, twist_pairs):
+    # twist_flip = -1 * twist_phi.copy() # 23 x 2
+    twist_flip = np.zeros_like(twist_phi)
+    weight_flip = twist_weight.copy()
+
+    twist_flip[:, 0] = twist_phi[:, 0].copy() # cos
+    twist_flip[:, 1] = -1 * twist_phi[:, 1].copy() # sin
+    for pair in twist_pairs:
+        idx0 = pair[0] - 1
+        idx1 = pair[1] - 1
+        twist_flip[idx0, :], twist_flip[idx1, :] = \
+            twist_flip[idx1, :], twist_flip[idx0, :].copy()
+        
+        weight_flip[idx0, :], weight_flip[idx1, :] = \
+            weight_flip[idx1, :], weight_flip[idx0, :].copy()
+    
+    return twist_flip, weight_flip
 
 
 def rot_aa(aa, rot):
@@ -1390,20 +1440,25 @@ def quat_to_rotmat(quat):
     return rotMat
 
 
-def flip_twist(twist_phi, twist_weight, twist_pairs):
-    # twist_flip = -1 * twist_phi.copy() # 23 x 2
-    twist_flip = np.zeros_like(twist_phi)
-    weight_flip = twist_weight.copy()
 
-    twist_flip[:, 0] = twist_phi[:, 0].copy() # cos
-    twist_flip[:, 1] = -1 * twist_phi[:, 1].copy() # sin
-    for pair in twist_pairs:
-        idx0 = pair[0] - 1
-        idx1 = pair[1] - 1
-        twist_flip[idx0, :], twist_flip[idx1, :] = \
-            twist_flip[idx1, :], twist_flip[idx0, :].copy()
-        
-        weight_flip[idx0, :], weight_flip[idx1, :] = \
-            weight_flip[idx1, :], weight_flip[idx0, :].copy()
-    
-    return twist_flip, weight_flip
+def rot_theta(theta, xyz_coord, rot, smpl_parents):
+    """Rotate axis angle parameters."""
+    theta_0 = theta[:1] # the first theta is global orientation, and should be processed separately
+    theta_left = theta[1:]
+    smpl_parents_left = smpl_parents[1:]
+
+    angle = np.linalg.norm(theta_left + 1e-8, axis=1, keepdims=True)
+
+    origin_xyz_start = xyz_coord[smpl_parents_left]
+    origin_xyz_end = origin_xyz_start + theta_left
+    # new_xyz_start = np.einsum('ca,ba->ba', trans_3d, origin_xyz_start)
+    # new_xyz_end = np.einsum('ca,ba->ba', trans_3d, origin_xyz_end)
+    new_xyz_start = rotate_xyz_jts(origin_xyz_start, rot)
+    new_xyz_end = rotate_xyz_jts(origin_xyz_end, rot)
+    new_axis = new_xyz_end - new_xyz_start
+    new_axis = new_axis / np.linalg.norm(new_axis + 1e-8, axis=1, keepdims=True)
+
+    new_theta_left = new_axis * angle
+    new_theta = np.concatenate([theta_0, new_theta_left], axis=0)
+    return new_theta
+

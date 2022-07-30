@@ -10,7 +10,7 @@ import torch.utils.data as data
 
 from hybrik.utils.bbox import bbox_clip_xyxy, bbox_xywh_to_xyxy
 from hybrik.utils.pose_utils import cam2pixel_matrix, pixel2cam_matrix, reconstruction_error
-from hybrik.utils.presets import SimpleTransform3DSMPL
+from hybrik.utils.presets import SimpleTransform3DSMPL, SimpleTransform3DSMPLCam
 
 
 class HP3D(data.Dataset):
@@ -50,7 +50,6 @@ class HP3D(data.Dataset):
     # EVAL_JOINTS = [10, 8, 14, 15, 16, 11, 12, 13, 1, 2, 3, 4, 5, 6, 0, 7, 9]  # h36m -> 3dhp
 
     # num_joints = 28
-    bbox_3d_shape = (2000, 2000, 2000)
     joints_name = ('spine3', 'spine4', 'spine2', 'spine', 'pelvis',                         # 4
                    'neck', 'head', 'head_top',                                              # 7
                    'left_clavicle', 'left_shoulder', 'left_elbow',                          # 10
@@ -99,6 +98,7 @@ class HP3D(data.Dataset):
         self._train = train
         self._dpg = dpg
 
+        self.bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
         self._scale_factor = cfg.DATASET.SCALE_FACTOR
         self._color_factor = cfg.DATASET.COLOR_FACTOR
         self._rot = cfg.DATASET.ROT_FACTOR
@@ -129,6 +129,18 @@ class HP3D(data.Dataset):
 
         if cfg.MODEL.EXTRA.PRESET == 'simple_smpl_3d':
             self.transformation = SimpleTransform3DSMPL(
+                self, scale_factor=self._scale_factor,
+                color_factor=self._color_factor,
+                occlusion=False,
+                input_size=self._input_size,
+                output_size=self._output_size,
+                depth_dim=self._depth_dim,
+                bbox_3d_shape=self.bbox_3d_shape,
+                rot=self._rot, sigma=self._sigma,
+                train=self._train, add_dpg=self._dpg,
+                loss_type=self._loss_type, two_d=True)
+        elif cfg.MODEL.EXTRA.PRESET == 'simple_smpl_3d_cam':
+            self.transformation = SimpleTransform3DSMPLCam(
                 self, scale_factor=self._scale_factor,
                 color_factor=self._color_factor,
                 occlusion=False,

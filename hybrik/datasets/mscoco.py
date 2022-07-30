@@ -9,7 +9,7 @@ import torch.utils.data as data
 from pycocotools.coco import COCO
 
 from hybrik.utils.bbox import bbox_clip_xyxy, bbox_xywh_to_xyxy
-from hybrik.utils.presets import SimpleTransform
+from hybrik.utils.presets import SimpleTransform, SimpleTransformCam
 
 
 class Mscoco(data.Dataset):
@@ -80,6 +80,8 @@ class Mscoco(data.Dataset):
         self.upper_body_ids = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
         self.lower_body_ids = (11, 12, 13, 14, 15, 16)
 
+        self.bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
+
         if cfg.MODEL.EXTRA.PRESET == 'simple_smpl_3d':
             self.transformation = SimpleTransform(
                 self, scale_factor=self._scale_factor,
@@ -90,6 +92,17 @@ class Mscoco(data.Dataset):
                 rot=self._rot, sigma=self._sigma,
                 train=self._train, add_dpg=self._dpg,
                 loss_type=self._loss_type, dict_output=True)
+        elif cfg.MODEL.EXTRA.PRESET == 'simple_smpl_3d_cam':
+            self.transformation = SimpleTransformCam(
+                self, scale_factor=self._scale_factor,
+                color_factor=self._color_factor,
+                occlusion=self._occlusion,
+                input_size=self._input_size,
+                output_size=self._output_size,
+                rot=self._rot, sigma=self._sigma,
+                train=self._train, add_dpg=self._dpg,
+                loss_type=self._loss_type, dict_output=True, 
+                bbox_3d_shape=self.bbox_3d_shape)
 
         self._items, self._labels = self._lazy_load_json()
 

@@ -114,6 +114,9 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
         self.deccam = nn.Linear(1024, 3)
 
         self.focal_length = kwargs['FOCAL_LENGTH']
+        bbox_3d_shape = kwargs['BBOX_3D_SHAPE'] if 'BBOX_3D_SHAPE' in kwargs else (2000, 2000, 2000)
+        self.bbox_3d_shape = torch.tensor(bbox_3d_shape).float()
+        self.depth_factor = self.bbox_3d_shape[2] * 1e-3
         self.input_size = 256.0
 
     def _make_deconv_layer(self):
@@ -251,19 +254,13 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
 
         return pred_phi
 
-    def forward(self, x, flip_item=None, flip_output=False, gt_uvd=None, gt_uvd_weight=None, **kwargs):
+    def forward(self, x, flip_item=None, flip_output=False, **kwargs):
         
         batch_size = x.shape[0]
-
-        # torch.cuda.synchronize()
-        # model_start_t = time.time()
 
         x0 = self.preact(x)
         out = self.deconv_layers(x0)
         out = self.final_layer(out)
-
-        # torch.cuda.synchronize()
-        # preat_end_t = time.time()
 
         out = out.reshape((out.shape[0], self.num_joints, -1))
 
@@ -319,13 +316,13 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
         camDepth = self.focal_length / (self.input_size * camScale + 1e-9)
 
         pred_xyz_jts_29 = torch.zeros_like(pred_uvd_jts_29)
-        pred_xyz_jts_29[:, :, 2:] = pred_uvd_jts_29[:, :, 2:].clone() # unit: 2.2m
+        pred_xyz_jts_29[:, :, 2:] = pred_uvd_jts_29[:, :, 2:].clone() # unit: (self.depth_factor m)
         pred_xyz_jts_29_meter = (pred_uvd_jts_29[:, :, :2] * self.input_size / self.focal_length) \
-                                        * (pred_xyz_jts_29[:, :, 2:]*2.2 + camDepth) - camTrans # unit: m
+                                        * (pred_xyz_jts_29[:, :, 2:]*self.depth_factor + camDepth) - camTrans # unit: m
 
-        pred_xyz_jts_29[:, :, :2] = pred_xyz_jts_29_meter / 2.2 # unit: 2.2m
+        pred_xyz_jts_29[:, :, :2] = pred_xyz_jts_29_meter / self.depth_factor # unit: (self.depth_factor m)
 
-        camera_root = pred_xyz_jts_29[:, [0], ]*2.2
+        camera_root = pred_xyz_jts_29[:, [0], ]*self.depth_factor
         camera_root[:, :, :2] += camTrans
         camera_root[:, :, [2]] += camDepth
 
@@ -353,7 +350,7 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
             pred_shape = (pred_shape + pred_shape_orig) / 2
 
         output = self.smpl.hybrik(
-            pose_skeleton=pred_xyz_jts_29.type(self.smpl_dtype) * 2.2, # unit: meter
+            pose_skeleton=pred_xyz_jts_29.type(self.smpl_dtype) * self.depth_factor, # unit: meter
             betas=pred_shape.type(self.smpl_dtype),
             phis=pred_phi.type(self.smpl_dtype),
             global_orient=None,
@@ -361,17 +358,15 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
         )
         pred_vertices = output.vertices.float()
         #  -0.5 ~ 0.5
-        # pred_xyz_jts_24_struct = output.joints.float() / 2.2
-        pred_xyz_jts_24_struct = output.joints.float() / 2
+        pred_xyz_jts_24_struct = output.joints.float() / self.depth_factor
         #  -0.5 ~ 0.5
-        # pred_xyz_jts_17 = output.joints_from_verts.float() / 2.2
-        pred_xyz_jts_17 = output.joints_from_verts.float() / 2
+        pred_xyz_jts_17 = output.joints_from_verts.float() / self.depth_factor
         pred_theta_mats = output.rot_mats.float().reshape(batch_size, 24 * 4)
-        pred_xyz_jts_24 = pred_xyz_jts_29[:, :24, :].reshape(batch_size, 72) / 2
+        pred_xyz_jts_24 = pred_xyz_jts_29[:, :24, :].reshape(batch_size, 72)
         pred_xyz_jts_24_struct = pred_xyz_jts_24_struct.reshape(batch_size, 72)
         pred_xyz_jts_17_flat = pred_xyz_jts_17.reshape(batch_size, 17 * 3)
 
-        transl = pred_xyz_jts_29[:, 0, :] * 2.2 - pred_xyz_jts_17[:, 0, :] * 2.2
+        transl = pred_xyz_jts_29[:, 0, :] * self.depth_factor - pred_xyz_jts_17[:, 0, :] * self.depth_factor
         transl[:, :2] += camTrans[:, 0]
         transl[:, 2] += camDepth[:, 0, 0]
 

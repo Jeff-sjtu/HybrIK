@@ -1,5 +1,5 @@
 DATASET:
-  DATASET: 'mix_smpl'
+  DATASET: 'mix_smpl_cam'
   SET_LIST:
     - ROOT: './data/h36m/'
       TEST_SET: 'Sample_20_test_Human36M_smpl'
@@ -38,12 +38,16 @@ MODEL:
     BACKBONE: 'resnet'
     CROP: 'padding'
     AUGMENT: 'none'
-    PRESET: 'simple_smpl_3d'
+    PRESET: 'simple_smpl_3d_cam'
     DEPTH_DIM: 64
   POST:
     NORM_TYPE: 'softmax'
+  BBOX_3D_SHAPE:
+    - 2200
+    - 2200
+    - 2200
 LOSS:
-  TYPE: 'L1LossDimSMPL'
+  TYPE: 'L1LossDimSMPLCam'
   ELEMENTS:
     BETA_WEIGHT: 1
     BETA_REG_WEIGHT: 0
@@ -56,6 +60,7 @@ LOSS:
     XYZ_SMPL24_WEIGHT: 0
     XYZ_SMPL17_WEIGHT: 0
     VERTICE_WEIGHT: 0
+    RUBOST_TRAIN: True
 TEST:
   HEATMAP2COORD: 'coord'
 TRAIN:
