@@ -126,37 +126,35 @@ class L1LossDimSMPLCam(nn.Module):
 
         batch_size = pred_xyz.shape[0]
 
-        pred_uvd = output.pred_uvd_jts.reshape(batch_size,-1,3)[:, :29]
-        target_uvd = labels['target_uvd_29'][:, :29*3]
-        target_uvd_weight = labels['target_weight_29'][:, :29*3]
+        pred_uvd = output.pred_uvd_jts.reshape(batch_size, -1, 3)[:, :29]
+        target_uvd = labels['target_uvd_29'][:, :29 * 3]
+        target_uvd_weight = labels['target_weight_29'][:, :29 * 3]
 
         loss_uvd = weighted_l1_loss(
-                pred_uvd.reshape(batch_size, -1), 
-                target_uvd.reshape(batch_size, -1), 
-                target_uvd_weight.reshape(batch_size, -1), self.size_average)
+            pred_uvd.reshape(batch_size, -1),
+            target_uvd.reshape(batch_size, -1),
+            target_uvd_weight.reshape(batch_size, -1), self.size_average)
 
         loss = loss_beta * self.beta_weight + loss_theta * self.theta_weight
         loss += loss_twist * self.twist_weight
 
         if epoch_num > self.pretrain_epoch:
             loss += loss_xyz * self.xyz24_weight
-        
+
         loss += loss_uvd * self.uvd24_weight
 
-        use_cam_loss = True
-        if use_cam_loss:
-            smpl_weight = (target_xyz_weight.sum(axis=1) > 3) * 1.0
-            smpl_weight = smpl_weight.unsqueeze(1)
-            pred_trans = output.cam_trans * smpl_weight
-            pred_scale = output.cam_scale * smpl_weight
-            target_trans = labels['camera_trans'] * smpl_weight
-            target_scale = labels['camera_scale'] * smpl_weight
-            trans_loss = self.criterion_smpl(pred_trans, target_trans)
-            scale_loss = self.criterion_smpl(pred_scale, target_scale)
+        smpl_weight = (target_xyz_weight.sum(axis=1) > 3).float()
+        smpl_weight = smpl_weight.unsqueeze(1)
+        pred_trans = output.cam_trans * smpl_weight
+        pred_scale = output.cam_scale * smpl_weight
+        target_trans = labels['camera_trans'] * smpl_weight
+        target_scale = labels['camera_scale'] * smpl_weight
+        trans_loss = self.criterion_smpl(pred_trans, target_trans)
+        scale_loss = self.criterion_smpl(pred_scale, target_scale)
 
-            if epoch_num > self.pretrain_epoch:
-                loss += 0.1 * (trans_loss+scale_loss)
-            else:
-                loss += 1 * (trans_loss+scale_loss)
+        if epoch_num > self.pretrain_epoch:
+            loss += 0.1 * (trans_loss + scale_loss)
+        else:
+            loss += 1 * (trans_loss + scale_loss)
 
         return loss

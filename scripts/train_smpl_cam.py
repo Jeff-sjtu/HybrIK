@@ -57,7 +57,7 @@ def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
         root = labels.pop('joint_root')
         depth_factor = labels.pop('depth_factor')
 
-        output =m(inps, trans_inv=trans_inv, intrinsic_param=intrinsic_param, joint_root=root, depth_factor=depth_factor)
+        output = m(inps, trans_inv=trans_inv, intrinsic_param=intrinsic_param, joint_root=root, depth_factor=depth_factor)
 
         robust_train = cfg.LOSS.ELEMENTS.get('RUBOST_TRAIN', False)
         if robust_train:
