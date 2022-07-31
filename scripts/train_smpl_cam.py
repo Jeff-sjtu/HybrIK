@@ -11,7 +11,7 @@ import torch.utils.data
 from torch.nn.utils import clip_grad_norm_
 from torch.nn.utils import clip_grad
 
-from hybrik.datasets import MixDataset, MixDatasetCam, PW3D
+from hybrik.datasets import MixDataset, MixDatasetCam, PW3D, MixDataset2Cam
 from hybrik.models import builder
 from hybrik.opt import cfg, logger, opt
 from hybrik.utils.env import init_dist
@@ -304,6 +304,10 @@ def main_worker(gpu, opt, cfg):
         train_dataset = MixDatasetCam(
             cfg=cfg,
             train=True)
+    elif cfg.DATASET.DATASET == 'mix2_smpl_cam':
+        train_dataset = MixDataset2Cam(
+            cfg=cfg,
+            train=True)
     else:
         raise NotImplementedError
 
@@ -319,7 +323,7 @@ def main_worker(gpu, opt, cfg):
         gt_val_dataset_h36m = MixDataset(
             cfg=cfg,
             train=False)
-    elif cfg.DATASET.DATASET == 'mix_smpl_cam':
+    elif cfg.DATASET.DATASET == 'mix_smpl_cam' or cfg.DATASET.DATASET == 'mix2_smpl_cam':
         gt_val_dataset_h36m = MixDatasetCam(
             cfg=cfg,
             train=False)
