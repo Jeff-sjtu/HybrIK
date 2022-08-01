@@ -118,13 +118,13 @@ Download *Human3.6M*, *MPI-INF-3DHP*, *3DPW* and *MSCOCO* datasets. You need to 
 ## Train from scratch
 
 ``` bash
-./scripts/train_smpl.sh train_res34 ./configs/256x192_adam_lr1e-3-res34_smpl_3d_base_2x_mix.yaml
+./scripts/train_smpl_cam.sh test_3dpw configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix_w_pw3d.yaml
 ```
 
 ## Evaluation
-Download the pretrained model [[Google Drive](https://drive.google.com/file/d/1SoVJ3dniVpBi2NkYfa2S8XEv0TGIK26l/view?usp=sharing)].
+Download the pretrained model [[Google Drive](https://drive.google.com/file/d/16Y_MGUynFeEzV8GVtKTE5AtkHSi3xsF9/view?usp=sharing)].
 ``` bash
-./scripts/validate_smpl.sh ./configs/256x192_adam_lr1e-3-res34_smpl_24_3d_base_2x_mix.yaml ./pretrained_res34.pth
+./scripts/validate_smpl.sh  ./configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix.yaml ./pretrained_w_cam.pth
 ```
 
 
