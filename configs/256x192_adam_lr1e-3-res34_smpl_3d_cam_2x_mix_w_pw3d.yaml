@@ -1,5 +1,5 @@
 DATASET:
-  DATASET: 'mix_smpl_cam'
+  DATASET: 'mix2_smpl_cam'
   SET_LIST:
     - ROOT: './data/h36m/'
       TEST_SET: 'Sample_20_test_Human36M_smpl'

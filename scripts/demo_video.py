@@ -64,11 +64,13 @@ opt = parser.parse_args()
 cfg_file = 'configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix.yaml'
 cfg = update_config(cfg_file)
 
+bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
+bbox_3d_shape = [item*1e-3 for item in bbox_3d_shape]
 dummpy_set = edict({
     'joint_pairs_17': None,
     'joint_pairs_24': None,
     'joint_pairs_29': None,
-    'bbox_3d_shape': (2.2, 2.2, 2.2)
+    'bbox_3d_shape': bbox_3d_shape
 })
 
 transformation = SimpleTransform3DSMPL(
@@ -78,7 +80,7 @@ transformation = SimpleTransform3DSMPL(
     input_size=cfg.MODEL.IMAGE_SIZE,
     output_size=cfg.MODEL.HEATMAP_SIZE,
     depth_dim=cfg.MODEL.EXTRA.DEPTH_DIM,
-    bbox_3d_shape=(2.2, 2,2, 2.2),
+    bbox_3d_shape=bbox_3d_shape,
     rot=cfg.DATASET.ROT_FACTOR, sigma=cfg.MODEL.EXTRA.SIGMA,
     train=False, add_dpg=False,
     loss_type=cfg.LOSS['TYPE'])

@@ -33,6 +33,8 @@ In CVPR 2021
 </div>
 
 ## News :triangular_flag_on_post:
+[2022/07/31] Training code with predicted camera is released.
+
 [2022/07/25] [HybrIK](https://github.com/Jeff-sjtu/HybrIK) is now supported in [Alphapose](https://github.com/MVIG-SJTU/AlphaPose)! Multi-person demo with pose-tracking is available.
 
 [2022/04/27] <a href='https://colab.research.google.com/drive/1n41l7I2NxWseuruVQEU8he2XqzSXhu2f?usp=sharing' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a> is ready to use.
@@ -116,13 +118,13 @@ Download *Human3.6M*, *MPI-INF-3DHP*, *3DPW* and *MSCOCO* datasets. You need to 
 ## Train from scratch
 
 ``` bash
-./scripts/train_smpl.sh train_res34 ./configs/256x192_adam_lr1e-3-res34_smpl_3d_base_2x_mix.yaml
+./scripts/train_smpl_cam.sh test_3dpw configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix_w_pw3d.yaml
 ```
 
 ## Evaluation
-Download the pretrained model [[Google Drive](https://drive.google.com/file/d/1SoVJ3dniVpBi2NkYfa2S8XEv0TGIK26l/view?usp=sharing)].
+Download the pretrained model [[Google Drive](https://drive.google.com/file/d/16Y_MGUynFeEzV8GVtKTE5AtkHSi3xsF9/view?usp=sharing)].
 ``` bash
-./scripts/validate_smpl.sh ./configs/256x192_adam_lr1e-3-res34_smpl_24_3d_base_2x_mix.yaml ./pretrained_res34.pth
+./scripts/validate_smpl.sh  ./configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix.yaml ./pretrained_w_cam.pth
 ```
 
 
