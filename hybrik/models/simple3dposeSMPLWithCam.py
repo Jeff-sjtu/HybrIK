@@ -321,7 +321,7 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
 
         if flip_item is not None:
             assert flip_output is not None
-            pred_xyz_jts_29_orig, pred_phi_orig, pred_leaf_orig, pred_shape_orig = flip_item
+            pred_xyz_jts_29_orig, pred_phi_orig, pred_shape_orig = flip_item
 
         if flip_output:
             pred_xyz_jts_29 = self.flip_xyz_coord(pred_xyz_jts_29, flatten=False)

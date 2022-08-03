@@ -159,7 +159,6 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=24, pr
 
         test_betas = output.pred_shape
         test_phi = output.pred_phi
-        test_leaf = output.pred_leaf
 
         if opt.flip_test:
             if isinstance(inps, list):
@@ -169,7 +168,7 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=24, pr
 
             output_flip = m(inps_flip, 
                             trans_inv=trans_inv, intrinsic_param=intrinsic_param, joint_root=root, depth_factor=depth_factor,
-                            flip_item=(pred_xyz_jts_29, test_phi, test_leaf, test_betas),
+                            flip_item=(pred_xyz_jts_29, test_phi, test_betas),
                             flip_output=True)
 
             # pred_uvd_jts_flip = output_flip.pred_uvd_jts
@@ -385,7 +384,7 @@ def preset_model(cfg):
         model.load_state_dict(torch.load(cfg.MODEL.PRETRAINED))
     elif cfg.MODEL.TRY_LOAD:
         logger.info(f'Loading model from {cfg.MODEL.TRY_LOAD}...')
-        pretrained_state = torch.load(cfg.MODEL.TRY_LOAD)
+        pretrained_state = torch.load(cfg.MODEL.TRY_LOAD, map_location='cpu')
         model_state = model.state_dict()
         pretrained_state = {k: v for k, v in pretrained_state.items()
                             if k in model_state and v.size() == model_state[k].size()}
