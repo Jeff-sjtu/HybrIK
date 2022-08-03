@@ -5,7 +5,8 @@ import os
 import pickle as pk
 
 import numpy as np
-import scipy.misc
+# import scipy.misc
+import cv2
 import torch.utils.data as data
 from hybrik.utils.bbox import bbox_clip_xyxy, bbox_xywh_to_xyxy
 from hybrik.utils.pose_utils import cam2pixel, pixel2cam, reconstruction_error
@@ -162,7 +163,8 @@ class H36mSMPL(data.Dataset):
         # load ground truth, including bbox, keypoints, image size
         label = copy.deepcopy(self._labels[idx])
 
-        img = scipy.misc.imread(img_path, mode='RGB')
+        # img = scipy.misc.imread(img_path, mode='RGB')
+        img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
         # img = load_image(img_path)
         # img = cv2.imread(img_path, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
 

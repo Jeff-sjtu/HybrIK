@@ -1,5 +1,4 @@
-from collections import namedtuple
-import time
+from easydict import EasyDict as edict
 
 import numpy as np
 import torch
@@ -9,15 +8,6 @@ from torch.nn import functional as F
 from .builder import SPPE
 from .layers.Resnet import ResNet
 from .layers.smpl.SMPL import SMPL_layer
-
-ModelOutput = namedtuple(
-    typename='ModelOutput',
-    field_names=['pred_shape', 'pred_theta_mats', 'pred_phi', 'pred_delta_shape', 'pred_leaf',
-                 'pred_uvd_jts', 'pred_xyz_jts_29', 'pred_xyz_jts_24', 'pred_xyz_jts_24_struct',
-                 'pred_xyz_jts_17', 'pred_vertices', 'maxvals', 'cam_scale', 'cam_trans', 'cam_root',
-                 'uvd_heatmap', 'transl', 'img_feat']
-)
-ModelOutput.__new__.__defaults__ = (None,) * len(ModelOutput._fields)
 
 
 def norm_heatmap(norm_type, heatmap):
@@ -370,7 +360,7 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
         transl[:, :2] += camTrans[:, 0]
         transl[:, 2] += camDepth[:, 0, 0]
 
-        output = ModelOutput(
+        output = edict(
             pred_phi=pred_phi,
             pred_delta_shape=delta_shape,
             pred_shape=pred_shape,

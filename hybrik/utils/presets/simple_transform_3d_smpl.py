@@ -120,8 +120,9 @@ class SimpleTransform3DSMPL(object):
 
     def test_transform(self, src, bbox):
         if isinstance(src, str):
-            import scipy.misc
-            src = scipy.misc.imread(src, mode='RGB')
+            # import scipy.misc
+            # src = scipy.misc.imread(src, mode='RGB')
+            src = cv2.cvtColor(cv2.imread(src), cv2.COLOR_BGR2RGB)
 
         xmin, ymin, xmax, ymax = bbox
         center, scale = _box_to_center_scale(
