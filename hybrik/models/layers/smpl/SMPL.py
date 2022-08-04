@@ -268,7 +268,7 @@ class SMPL_layer(nn.Module):
             vertices += transl.unsqueeze(dim=1)
             joints_from_verts += transl.unsqueeze(dim=1)
         else:
-            vertices = vertices - joints_from_verts[:, self.root_idx_17, :].unsqueeze(1).detach()
+            vertices = vertices - new_joints[:, self.root_idx_smpl, :].unsqueeze(1).detach()
             new_joints = new_joints - new_joints[:, self.root_idx_smpl, :].unsqueeze(1).detach()
             joints_from_verts = joints_from_verts - joints_from_verts[:, self.root_idx_17, :].unsqueeze(1).detach()
 

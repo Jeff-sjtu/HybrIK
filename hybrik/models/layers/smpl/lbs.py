@@ -801,7 +801,7 @@ def batch_inverse_kinematics_transform_naive(
     rotate_rest_pose = torch.zeros_like(rel_rest_pose)
     # set up the root
     rotate_rest_pose[:, 0] = rel_rest_pose[:, 0]
-    
+
     if need_detach:
         rel_pose_skeleton = torch.unsqueeze(pose_skeleton.clone(), dim=-1).detach()
     else:
@@ -832,10 +832,7 @@ def batch_inverse_kinematics_transform_naive(
     rot_mat_chain[:, 0] = global_orient_mat
     rot_mat_local[:, 0] = global_orient_mat
 
-    # leaf nodes rot_mats
-    if leaf_thetas is not None:
-        leaf_cnt = 0
-        leaf_rot_mats = leaf_thetas.view([batch_size, 5, 3, 3])
+    assert leaf_thetas is None
 
     idx_levs = [
         [0],
@@ -851,33 +848,38 @@ def batch_inverse_kinematics_transform_naive(
     ]
     if leaf_thetas is not None:
         idx_levs = idx_levs[:-1]
-    
+
+    all_child_rest_loc = rel_rest_pose[:, children[1:24]]
+    all_child_rest_norm = torch.norm(all_child_rest_loc, dim=2, keepdim=True)
+
+    # Convert twist to rot_mat
+    # (B, K, 3, 1)
+    twist_axis = all_child_rest_loc / (all_child_rest_norm + 1e-8)
+    # (B, K, 1, 1)
+    rx, ry, rz = torch.split(twist_axis, 1, dim=2)
+    zeros = torch.zeros((batch_size, 23, 1, 1), dtype=dtype, device=device)
+    K = torch.cat([zeros, -rz, ry, rz, zeros, -rx, -ry, rx, zeros], dim=2) \
+        .view((batch_size, 23, 3, 3))
+    ident = torch.eye(3, dtype=dtype, device=device).reshape(1, 1, 3, 3)
+    # (B, K, 1, 1)
+    cos, sin = torch.split(phis, 1, dim=2)
+    cos = torch.unsqueeze(cos, dim=3)
+    sin = torch.unsqueeze(sin, dim=3)
+    all_rot_mat_twist = ident + sin * K + (1 - cos) * torch.matmul(K, K)
+
     for idx_lev in range(1, len(idx_levs)):
         indices = idx_levs[idx_lev]
-        if idx_lev == len(idx_levs)-1:
+        if idx_lev == len(idx_levs) - 1:
             # leaf nodes
-            if leaf_thetas is not None:
-                rot_mat = leaf_rot_mats[:, :, :, :]
-
-                rotate_rest_pose[:, indices] = rotate_rest_pose[:, parents[indices]] + torch.matmul(
-                    rot_mat_chain[:, parents[indices]], 
-                    rel_rest_pose[:, indices]
-                )
-
-                rot_mat_chain[:, indices] = torch.matmul(
-                    rot_mat_chain[:, parents[indices]], 
-                    rot_mat
-                )
-                rot_mat_local[:, indices] = rot_mat
-        
+            assert NotImplementedError
         else:
             len_indices = len(indices)
             # (B, K, 3, 1)
             child_final_loc = torch.matmul(
-                    rot_mat_chain[:, parents[indices]].transpose(2, 3),
-                    rel_pose_skeleton[:, children[indices]])
+                rot_mat_chain[:, parents[indices]].transpose(2, 3),
+                rel_pose_skeleton[:, children[indices]])
 
-            child_rest_loc = rel_rest_pose[:, children[indices]] # need rotation back ?
+            child_rest_loc = rel_rest_pose[:, children[indices]]  # need rotation back ?
             # (B, K, 1, 1)
             child_final_norm = torch.norm(child_final_loc, dim=2, keepdim=True)
             child_rest_norm = torch.norm(child_rest_loc, dim=2, keepdim=True)
@@ -902,28 +904,14 @@ def batch_inverse_kinematics_transform_naive(
                 .view((batch_size, len_indices, 3, 3))
             ident = torch.eye(3, dtype=dtype, device=device).reshape(1, 1, 3, 3)
             rot_mat_loc = ident + sin * K + (1 - cos) * torch.matmul(K, K)
+            rot_mat_twist = all_rot_mat_twist[:, [i - 1 for i in indices]]
 
-            # Convert spin to rot_mat
-            # (B, K, 3, 1)
-            spin_axis = child_rest_loc / (child_rest_norm + 1e-8)
-            # (B, K, 1, 1)
-            rx, ry, rz = torch.split(spin_axis, 1, dim=2)
-            zeros = torch.zeros((batch_size, len_indices, 1, 1), dtype=dtype, device=device)
-            K = torch.cat([zeros, -rz, ry, rz, zeros, -rx, -ry, rx, zeros], dim=2) \
-                .view((batch_size, len_indices, 3, 3))
-            ident = torch.eye(3, dtype=dtype, device=device).reshape(1, 1, 3, 3)
-            # (B, K, 1, 1)
-            phi_indices = [item-1 for item in indices]
-            cos, sin = torch.split(phis[:, phi_indices], 1, dim=2)
-            cos = torch.unsqueeze(cos, dim=3)
-            sin = torch.unsqueeze(sin, dim=3)
-            rot_mat_spin = ident + sin * K + (1 - cos) * torch.matmul(K, K)
-            rot_mat = torch.matmul(rot_mat_loc, rot_mat_spin)
+            rot_mat = torch.matmul(rot_mat_loc, rot_mat_twist)
 
             rot_mat_chain[:, indices] = torch.matmul(
-                    rot_mat_chain[:, parents[indices]], 
-                    rot_mat
-                )
+                rot_mat_chain[:, parents[indices]],
+                rot_mat
+            )
             rot_mat_local[:, indices] = rot_mat
 
     # (B, K + 1, 3, 3)
@@ -931,7 +919,6 @@ def batch_inverse_kinematics_transform_naive(
     rot_mats = rot_mat_local
 
     return rot_mats, rotate_rest_pose.squeeze(-1)
-
 
 
 def batch_get_pelvis_orient_svd(rel_pose_skeleton, rel_rest_pose, parents, children, dtype):

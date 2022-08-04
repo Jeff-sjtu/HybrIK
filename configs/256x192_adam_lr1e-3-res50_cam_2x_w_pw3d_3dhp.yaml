@@ -7,9 +7,9 @@ DATASET:
     - ROOT: './data/coco/'
       TRAIN_SET: 'train2017'
     - ROOT: './data/3dhp/'
-      TRAIN_SET: 'train_v2'
+      TRAIN_SET: 'train_v3'
     - ROOT: './data/pw3d/'
-      TRAIN_SET: '3DPW_train_new'
+      TRAIN_SET: '3DPW_train_small'
   PROTOCOL: 2
   FLIP: True
   ROT_FACTOR: 30
@@ -21,7 +21,8 @@ DATASET:
 MODEL:
   TYPE: 'Simple3DPoseBaseSMPLCam'
   PRETRAINED: ''
-  TRY_LOAD: './simple_res50_256x192.pth'
+  TRY_LOAD: ''
+  RESUME: './pretrained_23.pth'
   FOCAL_LENGTH: 1000
   IMAGE_SIZE:
   - 256
@@ -68,14 +69,14 @@ TEST:
 TRAIN:
   WORLD_SIZE: 4
   BATCH_SIZE: 48
-  BEGIN_EPOCH: 0
+  BEGIN_EPOCH: 24
   END_EPOCH: 200
   OPTIMIZER: 'adam'
   LR: 0.001
   LR_FACTOR: 0.1
   LR_STEP:
-  - 90
-  - 120
+  - 60
+  - 80
   DPG_MILESTONE: 140
   DPG_STEP:
   - 160

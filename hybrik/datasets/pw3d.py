@@ -1,16 +1,15 @@
 """3DPW dataset."""
-import copy
 import json
 import os
 
-import numpy as np
 # import scipy.misc
 import cv2
+import joblib
+import numpy as np
 import torch.utils.data as data
-from pycocotools.coco import COCO
-from hybrik.utils.bbox import bbox_clip_xyxy, bbox_xywh_to_xyxy
 from hybrik.utils.pose_utils import pixel2cam, reconstruction_error
-from hybrik.utils.presets import SimpleTransform3DSMPL, SimpleTransform3DSMPLCam
+from hybrik.utils.presets import (SimpleTransform3DSMPL,
+                                  SimpleTransform3DSMPLCam)
 
 
 class PW3D(data.Dataset):
@@ -87,7 +86,7 @@ class PW3D(data.Dataset):
         self._dpg = dpg
 
         bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
-        self.bbox_3d_shape = [item * 1e-3 for item in bbox_3d_shape] # millimeter -> meter
+        self.bbox_3d_shape = [item * 1e-3 for item in bbox_3d_shape]  # millimeter -> meter
 
         self._scale_factor = cfg.DATASET.SCALE_FACTOR
         self._color_factor = cfg.DATASET.COLOR_FACTOR
@@ -125,7 +124,7 @@ class PW3D(data.Dataset):
         self.lshoulder_idx_24 = self.joints_name_24.index('left_shoulder')
         self.rshoulder_idx_24 = self.joints_name_24.index('right_shoulder')
 
-        self._items, self._labels = self._lazy_load_json()
+        self.db = self.load_pt()
 
         if cfg.MODEL.EXTRA.PRESET == 'simple_smpl_3d':
             self.transformation = SimpleTransform3DSMPL(
@@ -154,11 +153,14 @@ class PW3D(data.Dataset):
 
     def __getitem__(self, idx):
         # get image id
-        img_path = self._items[idx]
-        img_id = int(self._labels[idx]['img_id'])
+        img_path = self.db['img_path'][idx]
+        img_id = self.db['img_id'][idx]
 
         # load ground truth, including bbox, keypoints, image size
-        label = copy.deepcopy(self._labels[idx])
+        label = {}
+        for k in self.db.keys():
+            label[k] = self.db[k][idx].copy()
+
         # img = scipy.misc.imread(img_path, mode='RGB')
         img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
 
@@ -170,93 +172,11 @@ class PW3D(data.Dataset):
         return img, target, img_id, bbox
 
     def __len__(self):
-        return len(self._items)
+        return len(self.db['img_path'])
 
-    def _lazy_load_json(self):
-        """Load all image paths and labels from json annotation files into buffer."""
-
-        items = []
-        labels = []
-
-        db = COCO(self._ann_file)
-        cnt = 0
-
-        for aid in db.anns.keys():
-            ann = db.anns[aid]
-
-            img_id = ann['image_id']
-
-            img = db.loadImgs(img_id)[0]
-            width, height = img['width'], img['height']
-
-            sequence_name = img['sequence']
-            img_name = img['file_name']
-            abs_path = os.path.join(
-                self._root, 'imageFiles', sequence_name, img_name)
-
-            beta = np.array(ann['smpl_param']['shape']).reshape(10)
-            theta = np.array(ann['smpl_param']['pose']).reshape(24, 3)
-
-            x, y, w, h = ann['bbox']
-            xmin, ymin, xmax, ymax = bbox_clip_xyxy(bbox_xywh_to_xyxy(ann['bbox']), width, height)
-            if xmin > xmax - 5 or ymin > ymax - 5:
-                continue
-
-            f = np.array(img['cam_param']['focal'], dtype=np.float32)
-            c = np.array(img['cam_param']['princpt'], dtype=np.float32)
-
-            joint_cam_17 = np.array(ann['h36m_joints'], dtype=np.float32).reshape(17, 3)
-            joint_vis_17 = np.ones((17, 3))
-            joint_img_17 = np.zeros((17, 3))
-
-            joint_relative_17 = joint_cam_17 - joint_cam_17[self.root_idx_17, :]
-
-            joint_cam = np.array(ann['smpl_joint_cam'])
-            if joint_cam.size == 24 * 3:
-                joint_cam_29 = np.zeros((29, 3))
-                joint_cam_29[:24, :] = joint_cam.reshape(24, 3)
-            else:
-                joint_cam_29 = joint_cam.reshape(29, 3)
-
-            joint_img = np.array(ann['smpl_joint_img'], dtype=np.float32).reshape(24, 3)
-            if joint_img.size == 24 * 3:
-                joint_img_29 = np.zeros((29, 3))
-                joint_img_29[:24, :] = joint_img.reshape(24, 3)
-            else:
-                joint_img_29 = joint_img.reshape(29, 3)
-
-            joint_img_29[:, 2] = joint_img_29[:, 2] - joint_img_29[self.root_idx_smpl, 2]
-
-            joint_vis_24 = np.ones((24, 3))
-            joint_vis_29 = np.zeros((29, 3))
-            joint_vis_29[:24, :] = joint_vis_24
-
-            root_cam = joint_cam_29[self.root_idx_smpl]
-
-            items.append(abs_path)
-            labels.append({
-                'bbox': (xmin, ymin, xmax, ymax),
-                'img_id': cnt,
-                'img_path': abs_path,
-                'img_name': img_name,
-                'width': width,
-                'height': height,
-                'joint_img_17': joint_img_17,
-                'joint_vis_17': joint_vis_17,
-                'joint_cam_17': joint_cam_17,
-                'joint_relative_17': joint_relative_17,
-                'joint_img_29': joint_img_29,
-                'joint_vis_29': joint_vis_29,
-                'joint_cam_29': joint_cam_29,
-                'beta': beta,
-                'theta': theta,
-                'root_cam': root_cam,
-                'f': f,
-                'c': c
-            })
-            cnt += 1
-
-        return items, labels
+    def load_pt(self):
+        db = joblib.load(self._ann_file + '.pt')
+        return db
 
     @property
     def joint_pairs_17(self):
@@ -284,9 +204,8 @@ class PW3D(data.Dataset):
 
     def evaluate_uvd_24(self, preds, result_dir):
         print('Evaluation start...')
-        gts = self._labels
-        assert len(gts) == len(preds)
-        sample_num = len(gts)
+        assert len(self.db['img_id']) == len(preds)
+        sample_num = len(self.db['img_id'])
 
         pred_save = []
         error = np.zeros((sample_num, 24))  # joint error
@@ -294,15 +213,14 @@ class PW3D(data.Dataset):
         error_y = np.zeros((sample_num, 24))  # joint error
         error_z = np.zeros((sample_num, 24))  # joint error
         for n in range(sample_num):
-            gt = gts[n]
-            image_id = gt['img_id']
-            f = gt['f']
-            c = gt['c']
-            bbox = gt['bbox']
-            gt_3d_root = gt['root_cam'].copy()
-            gt_3d_kpt = gt['joint_cam_29'][:24, :].copy()
+            image_id = self.db['img_id'][n]
+            f = self.db['f'][n]
+            c = self.db['c'][n]
+            bbox = self.db['bbox'][n]
+            gt_3d_root = self.db['root_cam'][n].copy()
+            gt_3d_kpt = self.db['joint_cam_29'][n][:24, :].copy()
 
-            # gt_vis = gt['joint_vis']
+            # gt_vis = self.db['joint_vis']
 
             # restore coordinates to original space
             pred_2d_kpt = preds[image_id]['uvd_jts'][:24, :].copy()
@@ -322,11 +240,11 @@ class PW3D(data.Dataset):
             error_x[n] = np.abs(pred_3d_kpt[:, 0] - gt_3d_kpt[:, 0])
             error_y[n] = np.abs(pred_3d_kpt[:, 1] - gt_3d_kpt[:, 1])
             error_z[n] = np.abs(pred_3d_kpt[:, 2] - gt_3d_kpt[:, 2])
-            img_name = gt['img_path']
+            img_name = self.db['img_path'][n]
 
             # prediction save
-            pred_save.append({'img_name': img_name, 'joint_cam': pred_3d_kpt.tolist(
-            ), 'bbox': bbox, 'root_cam': gt_3d_root.tolist()})  # joint_cam is root-relative coordinate
+            pred_save.append({'img_name': str(img_name), 'joint_cam': pred_3d_kpt.tolist(
+            ), 'bbox': bbox.tolist(), 'root_cam': gt_3d_root.tolist()})  # joint_cam is root-relative coordinate
 
         # total error
         tot_err = np.mean(error) * 1000
@@ -349,9 +267,8 @@ class PW3D(data.Dataset):
 
     def evaluate_xyz_24(self, preds, result_dir):
         print('Evaluation start...')
-        gts = self._labels
-        assert len(gts) == len(preds)
-        sample_num = len(gts)
+        assert len(self.db['img_id']) == len(preds)
+        sample_num = len(self.db['img_id'])
 
         pred_save = []
         error = np.zeros((sample_num, 24))  # joint error
@@ -360,13 +277,12 @@ class PW3D(data.Dataset):
         error_y = np.zeros((sample_num, 24))  # joint error
         error_z = np.zeros((sample_num, 24))  # joint error
         for n in range(sample_num):
-            gt = gts[n]
-            image_id = gt['img_id']
-            bbox = gt['bbox']
-            gt_3d_root = gt['root_cam'].copy()
-            gt_3d_kpt = gt['joint_cam_29'][:24, :].copy()
+            image_id = self.db['img_id'][n]
+            bbox = self.db['bbox'][n]
+            gt_3d_root = self.db['root_cam'][n].copy()
+            gt_3d_kpt = self.db['joint_cam_29'][n][:24, :].copy()
 
-            # gt_vis = gt['joint_vis']
+            # gt_vis = self.db['joint_vis'][n]
 
             # restore coordinates to original space
             pred_3d_kpt = preds[image_id]['xyz_24'].copy() * self.bbox_3d_shape[2]
@@ -385,11 +301,11 @@ class PW3D(data.Dataset):
             error_x[n] = np.abs(pred_3d_kpt[:, 0] - gt_3d_kpt[:, 0])
             error_y[n] = np.abs(pred_3d_kpt[:, 1] - gt_3d_kpt[:, 1])
             error_z[n] = np.abs(pred_3d_kpt[:, 2] - gt_3d_kpt[:, 2])
-            img_name = gt['img_path']
+            img_name = self.db['img_path'][n]
 
             # prediction save
-            pred_save.append({'img_name': img_name, 'joint_cam': pred_3d_kpt.tolist(
-            ), 'bbox': bbox, 'root_cam': gt_3d_root.tolist()})  # joint_cam is root-relative coordinate
+            pred_save.append({'img_name': str(img_name), 'joint_cam': pred_3d_kpt.tolist(
+            ), 'bbox': bbox.tolist(), 'root_cam': gt_3d_root.tolist()})  # joint_cam is root-relative coordinate
 
         # total error
         tot_err = np.mean(error) * 1000
@@ -410,9 +326,9 @@ class PW3D(data.Dataset):
 
     def evaluate_xyz_17(self, preds, result_dir):
         print('Evaluation start...')
-        gts = self._labels
-        assert len(gts) == len(preds)
-        sample_num = len(gts)
+        # gts = self._labels
+        assert len(self.db['img_id']) == len(preds)
+        sample_num = len(self.db['img_id'])
 
         pred_save = []
         error = np.zeros((sample_num, len(self.EVAL_JOINTS)))  # joint error
@@ -422,13 +338,13 @@ class PW3D(data.Dataset):
         error_z = np.zeros((sample_num, len(self.EVAL_JOINTS)))  # joint error
         # error for each sequence
         for n in range(sample_num):
-            gt = gts[n]
-            image_id = gt['img_id']
-            bbox = gt['bbox']
-            gt_3d_root = gt['root_cam']
-            gt_3d_kpt = gt['joint_relative_17']
+            # gt = gts[n]
+            image_id = self.db['img_id'][n]
+            bbox = self.db['bbox'][n]
+            gt_3d_root = self.db['root_cam'][n]
+            gt_3d_kpt = self.db['joint_relative_17'][n]
 
-            # gt_vis = gt['joint_vis']
+            # gt_vis = self.db['joint_vis'][n]
 
             # restore coordinates to original space
             pred_3d_kpt = preds[image_id]['xyz_17'].copy() * self.bbox_3d_shape[2]
@@ -449,11 +365,11 @@ class PW3D(data.Dataset):
             error_x[n] = np.abs(pred_3d_kpt[:, 0] - gt_3d_kpt[:, 0])
             error_y[n] = np.abs(pred_3d_kpt[:, 1] - gt_3d_kpt[:, 1])
             error_z[n] = np.abs(pred_3d_kpt[:, 2] - gt_3d_kpt[:, 2])
-            img_name = gt['img_path']
+            img_name = self.db['img_path'][n]
 
             # prediction save
-            pred_save.append({'img_name': img_name, 'joint_cam': pred_3d_kpt.tolist(
-            ), 'bbox': bbox, 'root_cam': gt_3d_root.tolist()})  # joint_cam is root-relative coordinate
+            pred_save.append({'img_name': str(img_name), 'joint_cam': pred_3d_kpt.tolist(
+            ), 'bbox': bbox.tolist(), 'root_cam': gt_3d_root.tolist()})  # joint_cam is root-relative coordinate
 
         # total error
         tot_err = np.mean(error) * 1000

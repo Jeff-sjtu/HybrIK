@@ -22,7 +22,6 @@ from tqdm import tqdm
 
 # torch.set_num_threads(64)
 num_gpu = torch.cuda.device_count()
-valid_batch = 1 * num_gpu
 
 
 def _init_fn(worker_id):
@@ -331,7 +330,7 @@ def main_worker(gpu, opt, cfg):
 
     gt_val_dataset_3dpw = PW3D(
         cfg=cfg,
-        ann_file='3DPW_test_new.json',
+        ann_file='3DPW_test_small.json',
         train=False)
 
     opt.trainIters = 0
@@ -356,7 +355,7 @@ def main_worker(gpu, opt, cfg):
             if opt.log:
                 # Save checkpoint
                 torch.save(m.module.state_dict(), './exp/{}/{}-{}/model_{}.pth'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id, opt.epoch))
-            
+
             # Prediction Test
             with torch.no_grad():
                 gt_tot_err_h36m = validate_gt(m, opt, cfg, gt_val_dataset_h36m, heatmap_to_coord)
@@ -391,6 +390,16 @@ def preset_model(cfg):
 
         model_state.update(pretrained_state)
         model.load_state_dict(model_state)
+    elif cfg.MODEL.RESUME:
+        logger.info(f'Resume model from {cfg.MODEL.RESUME}...')
+        pretrained_state = torch.load(cfg.MODEL.RESUME, map_location='cpu')
+        model_state = model.state_dict()
+        pretrained_state = {k: v for k, v in pretrained_state.items()
+                            if k in model_state and v.size() == model_state[k].size()}
+
+        model_state.update(pretrained_state)
+        model.load_state_dict(model_state)
+
     else:
         logger.info('Create new model')
         logger.info('=> init weights')

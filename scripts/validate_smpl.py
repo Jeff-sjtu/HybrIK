@@ -114,7 +114,6 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=32, pr
 
         test_betas = output.pred_shape
         test_phi = output.pred_phi
-        test_leaf = output.pred_leaf
 
         if opt.flip_test:
             if isinstance(inps, list):
@@ -126,7 +125,7 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=32, pr
                 inps_flip,
                 trans_inv=trans_inv, intrinsic_param=intrinsic_param,
                 joint_root=root, depth_factor=depth_factor,
-                flip_item=(pred_uvd_jts, test_phi, test_leaf, test_betas), flip_output=True)
+                flip_item=(pred_uvd_jts, test_phi, test_betas), flip_output=True)
 
             pred_uvd_jts_flip = output_flip.pred_uvd_jts
 
@@ -230,10 +229,10 @@ def main_worker(gpu, opt, cfg):
 
     heatmap_to_coord = get_func_heatmap_to_coord(cfg)
 
-    gt_val_dataset_hp3d = HP3D(
-        cfg=cfg,
-        ann_file='test',
-        train=False)
+    # gt_val_dataset_hp3d = HP3D(
+    #     cfg=cfg,
+    #     ann_file='test',
+    #     train=False)
 
     gt_val_dataset_h36m = H36mSMPL(
         cfg=cfg,
@@ -242,7 +241,7 @@ def main_worker(gpu, opt, cfg):
 
     gt_val_dataset_3dpw = PW3D(
         cfg=cfg,
-        ann_file='3DPW_test_new.json',
+        ann_file='3DPW_test_small.json',
         train=False)
 
     print('##### Testing on 3DPW #####')

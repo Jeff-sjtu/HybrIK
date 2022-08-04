@@ -32,8 +32,8 @@ s_3dhp_2_smpl_jt = [
     9, 14,
     10, 15,
     11, 16,
-    -1, -1, # 23
-    # 7, 
+    -1, -1,  # 23
+    # 7,
     # -1, -1,
     # 21, 26
 ]
@@ -118,17 +118,21 @@ class MixDataset2Cam(data.Dataset):
                 train=True)
             self.db1 = Mscoco(
                 cfg=cfg,
-                ann_file=f'person_keypoints_{cfg.DATASET.SET_LIST[1].TRAIN_SET}.json',
+                ann_file=f'person_keypoints_{cfg.DATASET.SET_LIST[1].TRAIN_SET}_small.json',
                 train=True)
-            self.db2 = PW3D(
+            self.db2 = HP3D(
                 cfg=cfg,
-                ann_file='3DPW_train_new.json',
+                ann_file=cfg.DATASET.SET_LIST[2].TRAIN_SET,
+                train=True)
+            self.db3 = PW3D(
+                cfg=cfg,
+                ann_file='3DPW_train_small.json',
                 train=True
             )
 
-            self._subsets = [self.db0, self.db1, self.db2]
+            self._subsets = [self.db0, self.db1, self.db2, self.db3]
             self._2d_length = len(self.db1)
-            self._3d_length = len(self.db0) + len(self.db2)
+            self._3d_length = len(self.db0) + len(self.db2) + len(self.db3)
         else:
             self.db0 = H36mSMPL(
                 cfg=cfg,
@@ -144,7 +148,7 @@ class MixDataset2Cam(data.Dataset):
             self.max_db_data_num = max(self._subset_size)
             print('max_data_set', np.argmax(np.array(self._subset_size)))
             self.tot_size = (2 * max(self._subset_size))
-            self.partition = [0.3, 0.4, 0.3]
+            self.partition = [0.3, 0.4, 0.1, 0.2]
         else:
             self.tot_size = self._db0_size
             self.partition = [1]
@@ -190,7 +194,7 @@ class MixDataset2Cam(data.Dataset):
 
         img, target, img_id, bbox = self._subsets[dataset_idx][sample_idx]
 
-        if dataset_idx > 0 and dataset_idx < 2:
+        if dataset_idx > 0 and dataset_idx < 3:
             # COCO, 3DHP
             label_jts_origin = target.pop('target')
             label_jts_mask_origin = target.pop('target_weight')

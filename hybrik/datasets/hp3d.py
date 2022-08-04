@@ -1,17 +1,15 @@
 """MPI-INF-3DHP dataset."""
-import copy
 import json
 import os
-import pickle as pk
 
-import numpy as np
 # import scipy.misc
 import cv2
+import joblib
+import numpy as np
 import torch.utils.data as data
-
-from hybrik.utils.bbox import bbox_clip_xyxy, bbox_xywh_to_xyxy
-from hybrik.utils.pose_utils import cam2pixel_matrix, pixel2cam_matrix, reconstruction_error
-from hybrik.utils.presets import SimpleTransform3DSMPL, SimpleTransform3DSMPLCam
+from hybrik.utils.pose_utils import pixel2cam_matrix, reconstruction_error
+from hybrik.utils.presets import (SimpleTransform3DSMPL,
+                                  SimpleTransform3DSMPLCam)
 
 
 class HP3D(data.Dataset):
@@ -158,15 +156,18 @@ class HP3D(data.Dataset):
         self.lshoulder_idx = self.joints_name.index('left_shoulder') if self._train else self.EVAL_JOINTS.index(self.joints_name.index('left_shoulder'))
         self.rshoulder_idx = self.joints_name.index('right_shoulder') if self._train else self.EVAL_JOINTS.index(self.joints_name.index('right_shoulder'))
 
-        self._items, self._labels = self._lazy_load_json()
+        self.db = self.load_pt()
 
     def __getitem__(self, idx):
         # get image id
-        img_path = self._items[idx]
-        img_id = int(self._labels[idx]['img_id'])
+        img_path = self.db['img_path'][idx]
+        img_id = self.db['img_id'][idx]
 
         # load ground truth, including bbox, keypoints, image size
-        label = copy.deepcopy(self._labels[idx])
+        label = {}
+        for k in self.db.keys():
+            label[k] = self.db[k][idx].copy()
+
         # img = scipy.misc.imread(img_path, mode='RGB')
         img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
 
@@ -178,80 +179,11 @@ class HP3D(data.Dataset):
         return img, target, img_id, bbox
 
     def __len__(self):
-        return len(self._items)
+        return len(self.db['img_path'])
 
-    def _lazy_load_json(self):
-        if os.path.exists(self._ann_file + '_annot_keypoint.pkl') and self._lazy_import:
-            print('Lazy load annot...')
-            with open(self._ann_file + '_annot_keypoint.pkl', 'rb') as fid:
-                items, labels = pk.load(fid)
-        else:
-            items, labels = self._load_jsons()
-            try:
-                with open(self._ann_file + '_annot_keypoint.pkl', 'wb') as fid:
-                    pk.dump((items, labels), fid, pk.HIGHEST_PROTOCOL)
-            except Exception as e:
-                print(e)
-                print('Skip writing to .pkl file.')
-
-        return items, labels
-
-    def _load_jsons(self):
-        """Load all image paths and labels from JSON annotation files into buffer."""
-        items = []
-        labels = []
-
-        with open(self._ann_file, 'r') as fid:
-            database = json.load(fid)
-        # iterate through the annotations
-        for ann_image, ann_annotations in zip(database['images'], database['annotations']):
-            ann = dict()
-            for k, v in ann_image.items():
-                assert k not in ann.keys()
-                ann[k] = v
-            for k, v in ann_annotations.items():
-                ann[k] = v
-
-            image_id = ann['image_id']
-
-            width, height = ann['width'], ann['height']
-            xmin, ymin, xmax, ymax = bbox_clip_xyxy(
-                bbox_xywh_to_xyxy(ann['bbox']), width, height)
-
-            intrinsic_param = np.array(ann['cam_param']['intrinsic_param'], dtype=np.float32)
-
-            f = np.array([intrinsic_param[0, 0], intrinsic_param[1, 1]], dtype=np.float32)
-            c = np.array([intrinsic_param[0, 2], intrinsic_param[1, 2]], dtype=np.float32)
-
-            joint_cam = np.array(ann['keypoints_cam'])
-
-            joint_img = cam2pixel_matrix(joint_cam, intrinsic_param)
-            joint_img[:, 2] = joint_img[:, 2] - joint_cam[self.root_idx, 2]
-            joint_vis = np.ones((self.num_joints, 3))
-
-            root_cam = joint_cam[self.root_idx]
-
-            abs_path = os.path.join(self._root, 'mpi_inf_3dhp_{}_set'.format('train' if self._train else 'test'), ann['file_name'])
-
-            items.append(abs_path)
-            labels.append({
-                'bbox': (xmin, ymin, xmax, ymax),
-                'img_id': image_id,
-                'img_path': abs_path,
-                'img_name': ann['file_name'],
-                'width': width,
-                'height': height,
-                'joint_img': joint_img,
-                'joint_vis': joint_vis,
-                'joint_cam': joint_cam,
-                'root_cam': root_cam,
-                'intrinsic_param': intrinsic_param,
-                'f': f,
-                'c': c
-            })
-            if not self._train:
-                labels[-1]['activity_id'] = ann['activity_id']
-        return items, labels
+    def load_pt(self):
+        db = joblib.load(self._ann_file + '.pt')
+        return db
 
     @property
     def joint_pairs(self):

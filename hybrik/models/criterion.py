@@ -145,16 +145,16 @@ class L1LossDimSMPLCam(nn.Module):
 
         smpl_weight = (target_xyz_weight.sum(axis=1) > 3).float()
         smpl_weight = smpl_weight.unsqueeze(1)
-        pred_trans = output.cam_trans * smpl_weight
+        # pred_trans = output.cam_trans * smpl_weight
         pred_scale = output.cam_scale * smpl_weight
-        target_trans = labels['camera_trans'] * smpl_weight
+        # target_trans = labels['camera_trans'] * smpl_weight
         target_scale = labels['camera_scale'] * smpl_weight
-        trans_loss = self.criterion_smpl(pred_trans, target_trans)
+        # trans_loss = self.criterion_smpl(pred_trans, target_trans)
         scale_loss = self.criterion_smpl(pred_scale, target_scale)
 
         if epoch_num > self.pretrain_epoch:
-            loss += 0.1 * (trans_loss + scale_loss)
+            loss += 0.1 * (scale_loss)
         else:
-            loss += 1 * (trans_loss + scale_loss)
+            loss += 1 * (scale_loss)
 
         return loss
