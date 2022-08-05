@@ -6,6 +6,10 @@ import PIL.Image as pil_img
 def get_one_box(det_output, thrd=0.9):
     max_area = 0
     max_bbox = None
+
+    if det_output['boxes'].shape[0] == 0 or thrd < 1e-5:
+        return None
+
     for i in range(det_output['boxes'].shape[0]):
         bbox = det_output['boxes'][i]
         score = det_output['scores'][i]
@@ -30,12 +34,14 @@ def get_max_iou_box(det_output, prev_bbox, thrd=0.9):
         score = det_output['scores'][i]
         # if float(score) < thrd:
         #     continue
-        area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
+        # area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
         iou = calc_iou(prev_bbox, bbox)
         iou_score = float(score) * iou
         if float(iou_score) > max_score:
             max_bbox = [float(x) for x in bbox]
             max_score = iou_score
+    if max_bbox is None:
+        max_bbox = prev_bbox
 
     return max_bbox
 

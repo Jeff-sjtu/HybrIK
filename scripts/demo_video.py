@@ -19,6 +19,7 @@ from tqdm import tqdm
 
 det_transform = T.Compose([T.ToTensor()])
 
+
 def xyxy2xywh(bbox):
     x1, y1, x2, y2 = bbox
 
@@ -65,7 +66,7 @@ cfg_file = 'configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix.yaml'
 cfg = update_config(cfg_file)
 
 bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
-bbox_3d_shape = [item*1e-3 for item in bbox_3d_shape]
+bbox_3d_shape = [item * 1e-3 for item in bbox_3d_shape]
 dummpy_set = edict({
     'joint_pairs_17': None,
     'joint_pairs_24': None,
