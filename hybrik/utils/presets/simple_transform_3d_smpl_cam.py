@@ -469,8 +469,8 @@ class SimpleTransform3DSMPLCam(object):
             # rotate global theta
             theta[0, :3] = rot_aa(theta[0, :3], r)
 
-            theta_rot_mat = batch_rodrigues_numpy(theta)
-            theta_quat = rotmat_to_quat_numpy(theta_rot_mat).reshape(24 * 4)
+            theta_rot_mat = batch_rodrigues_numpy(theta).reshape(24 * 9)
+            # theta_quat = rotmat_to_quat_numpy(theta_rot_mat).reshape(24 * 4)
 
             # rotate xyz joints
             joint_cam_17_xyz = rotate_xyz_jts(joint_cam_17_xyz, r)
@@ -496,9 +496,9 @@ class SimpleTransform3DSMPLCam(object):
                     joints_29_uvd[i, 0:2, 0] = affine_transform(joints_29_uvd[i, 0:2, 0], trans)
             
             target_smpl_weight = torch.ones(1).float()
-            theta_24_weights = np.ones((24, 4))
+            theta_24_weights = np.ones((24, 9))
 
-            theta_24_weights = theta_24_weights.reshape(24 * 4)
+            theta_24_weights = theta_24_weights.reshape(24 * 9)
 
             # generate training targets
             target_uvd_29, target_weight_29 = self._integral_uvd_target_generator(joints_29_uvd, 29, inp_h, inp_w)
@@ -568,7 +568,8 @@ class SimpleTransform3DSMPLCam(object):
             output = {
                 'type': '3d_data_w_smpl',
                 'image': img,
-                'target_theta': torch.from_numpy(theta_quat).float(),
+                # 'target_theta': torch.from_numpy(theta_quat).float(),
+                'target_theta': torch.from_numpy(theta_rot_mat).float(),
                 'target_theta_weight': torch.from_numpy(theta_24_weights).float(),
                 'target_beta': torch.from_numpy(beta).float(),
                 'target_smpl_weight': target_smpl_weight,

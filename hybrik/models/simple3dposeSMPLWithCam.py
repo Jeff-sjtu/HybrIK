@@ -179,7 +179,6 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
         return pred_phi
 
     def forward(self, x, flip_item=None, flip_output=False, **kwargs):
-        
         batch_size = x.shape[0]
 
         x0 = self.preact(x)
@@ -189,26 +188,30 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
         out = out.reshape((out.shape[0], self.num_joints, -1))
 
         maxvals, _ = torch.max(out, dim=2, keepdim=True)
-        
-        out = norm_heatmap(self.norm_type, out)
-        assert out.dim() == 3, out.shape
 
-        heatmaps = out / out.sum(dim=2, keepdim=True)
+        heatmaps = norm_heatmap(self.norm_type, out)
+        assert heatmaps.dim() == 3, heatmaps.shape
+
+        # print(out.sum(dim=2, keepdim=True))
+        # heatmaps = out / out.sum(dim=2, keepdim=True)
 
         heatmaps = heatmaps.reshape((heatmaps.shape[0], self.num_joints, self.depth_dim, self.height_dim, self.width_dim))
 
-        hm_x0 = heatmaps.sum((2, 3))
-        hm_y0 = heatmaps.sum((2, 4))
-        hm_z0 = heatmaps.sum((3, 4))
+        hm_x0 = heatmaps.sum((2, 3))  # (B, K, W)
+        hm_y0 = heatmaps.sum((2, 4))  # (B, K, H)
+        hm_z0 = heatmaps.sum((3, 4))  # (B, K, D)
 
-        range_tensor = torch.arange(hm_x0.shape[-1], dtype=torch.float32, device=hm_x0.device)
-        hm_x = hm_x0 * range_tensor
-        hm_y = hm_y0 * range_tensor
-        hm_z = hm_z0 * range_tensor
+        range_tensor = torch.arange(hm_x0.shape[-1], dtype=torch.float32, device=hm_x0.device).unsqueeze(-1)
+        # hm_x = hm_x0 * range_tensor
+        # hm_y = hm_y0 * range_tensor
+        # hm_z = hm_z0 * range_tensor
 
-        coord_x = hm_x.sum(dim=2, keepdim=True)
-        coord_y = hm_y.sum(dim=2, keepdim=True)
-        coord_z = hm_z.sum(dim=2, keepdim=True)
+        # coord_x = hm_x.sum(dim=2, keepdim=True)
+        # coord_y = hm_y.sum(dim=2, keepdim=True)
+        # coord_z = hm_z.sum(dim=2, keepdim=True)
+        coord_x = hm_x0.matmul(range_tensor)
+        coord_y = hm_y0.matmul(range_tensor)
+        coord_z = hm_z0.matmul(range_tensor)
 
         coord_x = coord_x / float(self.width_dim) - 0.5
         coord_y = coord_y / float(self.height_dim) - 0.5
@@ -246,9 +249,9 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
 
         pred_xyz_jts_29[:, :, :2] = pred_xyz_jts_29_meter / self.depth_factor  # unit: (self.depth_factor m)
 
-        camera_root = pred_xyz_jts_29[:, [0], :] * self.depth_factor
-        camera_root[:, :, [2]] = camera_root[:, :, [2]] + camDepth
-        camTrans = camera_root.squeeze(dim=1)[:, :2]
+        camera_root = pred_xyz_jts_29[:, 0, :] * self.depth_factor
+        camera_root[:, 2] += camDepth[:, 0, 0]
+        # camTrans = camera_root.squeeze(dim=1)[:, :2]
 
         # if not self.training:
         #     pred_xyz_jts_29 = pred_xyz_jts_29 - pred_xyz_jts_29[:, [0]]
@@ -285,12 +288,12 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
         pred_xyz_jts_24_struct = output.joints.float() / self.depth_factor
         #  -0.5 ~ 0.5
         pred_xyz_jts_17 = output.joints_from_verts.float() / self.depth_factor
-        pred_theta_mats = output.rot_mats.float().reshape(batch_size, 24 * 4)
+        pred_theta_mats = output.rot_mats.float().reshape(batch_size, 24 * 9)
         pred_xyz_jts_24 = pred_xyz_jts_29[:, :24, :].reshape(batch_size, 72)
         pred_xyz_jts_24_struct = pred_xyz_jts_24_struct.reshape(batch_size, 72)
         pred_xyz_jts_17_flat = pred_xyz_jts_17.reshape(batch_size, 17 * 3)
 
-        transl = camera_root.squeeze(dim=1) - output.joints.float().reshape(-1, 24, 3)[:, 0, :]
+        transl = camera_root - output.joints.float().reshape(-1, 24, 3)[:, 0, :]
 
         output = edict(
             pred_phi=pred_phi,
@@ -305,8 +308,8 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
             pred_vertices=pred_vertices,
             maxvals=maxvals,
             cam_scale=camScale[:, 0],
-            cam_trans=camTrans[:, 0],
-            cam_root=camera_root,
+            # cam_trans=camTrans[:, 0],
+            # cam_root=camera_root,
             transl=transl,
             pred_camera=pred_camera
             # uvd_heatmap=torch.stack([hm_x0, hm_y0, hm_z0], dim=2),

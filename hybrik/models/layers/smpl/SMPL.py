@@ -1,4 +1,4 @@
-from collections import namedtuple
+from easydict import EasyDict as edict
 
 import numpy as np
 import torch
@@ -10,12 +10,6 @@ try:
     import cPickle as pk
 except ImportError:
     import pickle as pk
-
-
-ModelOutput = namedtuple('ModelOutput',
-                         ['vertices', 'joints', 'joints_from_verts',
-                          'rot_mats'])
-ModelOutput.__new__.__defaults__ = (None,) * len(ModelOutput._fields)
 
 
 def to_tensor(array, dtype=torch.float32):
@@ -214,7 +208,7 @@ class SMPL_layer(nn.Module):
             joints = joints - joints[:, self.root_idx_smpl, :].unsqueeze(1).detach()
             joints_from_verts_h36m = joints_from_verts_h36m - joints_from_verts_h36m[:, self.root_idx_17, :].unsqueeze(1).detach()
 
-        output = ModelOutput(
+        output = edict(
             vertices=vertices, joints=joints, rot_mats=rot_mats, joints_from_verts=joints_from_verts_h36m)
         return output
 
@@ -260,8 +254,7 @@ class SMPL_layer(nn.Module):
             self.lbs_weights, dtype=self.dtype, train=self.training,
             leaf_thetas=leaf_thetas)
 
-        rot_mats = rot_mats.reshape(batch_size * 24, 3, 3)
-        rot_mats = rotmat_to_quat(rot_mats).reshape(batch_size, 24 * 4)
+        rot_mats = rot_mats.reshape(batch_size, 24, 3, 3)
 
         if transl is not None:
             new_joints += transl.unsqueeze(dim=1)
@@ -272,6 +265,6 @@ class SMPL_layer(nn.Module):
         #     new_joints = new_joints - new_joints[:, self.root_idx_smpl, :].unsqueeze(1).detach()
         #     joints_from_verts = joints_from_verts - joints_from_verts[:, self.root_idx_17, :].unsqueeze(1).detach()
 
-        output = ModelOutput(
+        output = edict(
             vertices=vertices, joints=new_joints, rot_mats=rot_mats, joints_from_verts=joints_from_verts)
         return output
