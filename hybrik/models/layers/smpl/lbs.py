@@ -249,9 +249,11 @@ def lbs(betas, pose, v_template, shapedirs, posedirs, J_regressor, J_regressor_h
     if pose2rot:
         if pose.numel() == batch_size * 24 * 4:
             rot_mats = quat_to_rotmat(pose.reshape(batch_size * 24, 4)).reshape(batch_size, 24, 3, 3)
-        else:
+        elif pose.numel() == batch_size * 24 * 3:
             rot_mats = batch_rodrigues(
                 pose.view(-1, 3), dtype=dtype).view([batch_size, -1, 3, 3])
+        else:
+            rot_mats = pose.reshape(batch_size, 24, 3, 3)
 
         pose_feature = (rot_mats[:, 1:, :, :] - ident).view([batch_size, -1])
         # (N x P) x (P, V * 3) -> N x V x 3
@@ -1216,3 +1218,70 @@ def quat_to_rotmat(quat):
                           2 * wz + 2 * xy, w2 - x2 + y2 - z2, 2 * yz - 2 * wx,
                           2 * xz - 2 * wy, 2 * wx + 2 * yz, w2 - x2 - y2 + z2], dim=1).view(B, 3, 3)
     return rotMat
+
+
+def rotmat_to_aa(rotmat):
+    if rotmat.shape[1:] == (3, 3):
+        rot_mat = rotmat.reshape(-1, 3, 3)
+        hom = torch.tensor([0, 0, 1], dtype=torch.float32,
+                           device=rotmat.device)
+        hom = hom.reshape(1, 3, 1).expand(rot_mat.shape[0], -1, -1)
+        rotmat = torch.cat([rot_mat, hom], dim=-1)
+
+    quaternion = rotation_matrix_to_quaternion(rotmat)
+    aa = quaternion_to_angle_axis(quaternion)
+    aa[torch.isnan(aa)] = 0.0
+    return aa
+
+
+def quaternion_to_angle_axis(quaternion: torch.Tensor) -> torch.Tensor:
+    """
+    This function is borrowed from https://github.com/kornia/kornia
+
+    Convert quaternion vector to angle axis of rotation.
+
+    Adapted from ceres C++ library: ceres-solver/include/ceres/rotation.h
+
+    Args:
+        quaternion (torch.Tensor): tensor with quaternions.
+
+    Return:
+        torch.Tensor: tensor with angle axis of rotation.
+
+    Shape:
+        - Input: :math:`(*, 4)` where `*` means, any number of dimensions
+        - Output: :math:`(*, 3)`
+
+    Example:
+        >>> quaternion = torch.rand(2, 4)  # Nx4
+        >>> angle_axis = tgm.quaternion_to_angle_axis(quaternion)  # Nx3
+    """
+    if not torch.is_tensor(quaternion):
+        raise TypeError("Input type is not a torch.Tensor. Got {}".format(
+            type(quaternion)))
+
+    if not quaternion.shape[-1] == 4:
+        raise ValueError("Input must be a tensor of shape Nx4 or 4. Got {}"
+                         .format(quaternion.shape))
+    # unpack input and compute conversion
+    q1: torch.Tensor = quaternion[..., 1]
+    q2: torch.Tensor = quaternion[..., 2]
+    q3: torch.Tensor = quaternion[..., 3]
+    sin_squared_theta: torch.Tensor = q1 * q1 + q2 * q2 + q3 * q3
+
+    sin_theta: torch.Tensor = torch.sqrt(sin_squared_theta)
+    cos_theta: torch.Tensor = quaternion[..., 0]
+    two_theta: torch.Tensor = 2.0 * torch.where(
+        cos_theta < 0.0,
+        torch.atan2(-sin_theta, -cos_theta),
+        torch.atan2(sin_theta, cos_theta))
+
+    k_pos: torch.Tensor = two_theta / sin_theta
+    k_neg: torch.Tensor = 2.0 * torch.ones_like(sin_theta)
+    k: torch.Tensor = torch.where(sin_squared_theta > 0.0, k_pos, k_neg)
+
+    angle_axis: torch.Tensor = torch.zeros_like(quaternion)[..., :3]
+    angle_axis[..., 0] += q1 * k
+    angle_axis[..., 1] += q2 * k
+    angle_axis[..., 2] += q3 * k
+    return angle_axis

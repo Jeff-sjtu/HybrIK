@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from .lbs import lbs, hybrik, rotmat_to_quat, quat_to_rotmat
+from .lbs import lbs, hybrik, quat_to_rotmat
 
 try:
     import cPickle as pk
@@ -203,10 +203,10 @@ class SMPL_layer(nn.Module):
             joints += transl.unsqueeze(dim=1)
             vertices += transl.unsqueeze(dim=1)
             joints_from_verts_h36m += transl.unsqueeze(dim=1)
-        else:
-            vertices = vertices - joints_from_verts_h36m[:, self.root_idx_17, :].unsqueeze(1).detach()
-            joints = joints - joints[:, self.root_idx_smpl, :].unsqueeze(1).detach()
-            joints_from_verts_h36m = joints_from_verts_h36m - joints_from_verts_h36m[:, self.root_idx_17, :].unsqueeze(1).detach()
+        # else:
+        #     vertices = vertices - joints[:, self.root_idx_smpl, :].unsqueeze(1).detach()
+        #     joints = joints - joints[:, self.root_idx_smpl, :].unsqueeze(1).detach()
+        #     joints_from_verts_h36m = joints_from_verts_h36m - joints_from_verts_h36m[:, self.root_idx_17, :].unsqueeze(1).detach()
 
         output = edict(
             vertices=vertices, joints=joints, rot_mats=rot_mats, joints_from_verts=joints_from_verts_h36m)

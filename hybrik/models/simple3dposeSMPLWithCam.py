@@ -187,10 +187,10 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
 
         out = out.reshape((out.shape[0], self.num_joints, -1))
 
-        maxvals, _ = torch.max(out, dim=2, keepdim=True)
-
         heatmaps = norm_heatmap(self.norm_type, out)
         assert heatmaps.dim() == 3, heatmaps.shape
+
+        maxvals, _ = torch.max(heatmaps, dim=2, keepdim=True)
 
         # print(out.sum(dim=2, keepdim=True))
         # heatmaps = out / out.sum(dim=2, keepdim=True)
@@ -244,17 +244,17 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
 
         pred_xyz_jts_29 = torch.zeros_like(pred_uvd_jts_29)
         pred_xyz_jts_29[:, :, 2:] = pred_uvd_jts_29[:, :, 2:].clone()  # unit: (self.depth_factor m)
-        pred_xyz_jts_29_meter = (pred_uvd_jts_29[:, :, :2] * self.input_size / self.focal_length) \
+        pred_xy_jts_29_meter = (pred_uvd_jts_29[:, :, :2] * self.input_size / self.focal_length) \
             * (pred_xyz_jts_29[:, :, 2:] * self.depth_factor + camDepth)  # unit: m
 
-        pred_xyz_jts_29[:, :, :2] = pred_xyz_jts_29_meter / self.depth_factor  # unit: (self.depth_factor m)
+        pred_xyz_jts_29[:, :, :2] = pred_xy_jts_29_meter / self.depth_factor  # unit: (self.depth_factor m)
 
         camera_root = pred_xyz_jts_29[:, 0, :] * self.depth_factor
         camera_root[:, 2] += camDepth[:, 0, 0]
         # camTrans = camera_root.squeeze(dim=1)[:, :2]
 
         # if not self.training:
-        #     pred_xyz_jts_29 = pred_xyz_jts_29 - pred_xyz_jts_29[:, [0]]
+        pred_xyz_jts_29 = pred_xyz_jts_29 - pred_xyz_jts_29[:, [0]]
 
         if flip_item is not None:
             assert flip_output is not None
@@ -309,7 +309,7 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
             maxvals=maxvals,
             cam_scale=camScale[:, 0],
             # cam_trans=camTrans[:, 0],
-            # cam_root=camera_root,
+            cam_root=camera_root,
             transl=transl,
             pred_camera=pred_camera
             # uvd_heatmap=torch.stack([hm_x0, hm_y0, hm_z0], dim=2),

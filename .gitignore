@@ -108,4 +108,4 @@ data
 data/
 exp
 model_files/basicModel_neutral_lbs_10_207_0_v1.0.0.pkl
-
+res*

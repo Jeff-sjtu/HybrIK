@@ -6,8 +6,8 @@ HOST=$(hostname -i)
 
 python ./scripts/validate_smpl.py \
     --batch 32 \
-    --gpus 0,1,2,3 \
-    --world-size 4 \
+    --gpus 0,1,2 \
+    --world-size 3 \
     --flip-test \
     --launcher pytorch --rank 0 \
     --dist-url tcp://${HOST}:${PORT} \

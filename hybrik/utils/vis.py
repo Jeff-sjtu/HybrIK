@@ -89,7 +89,7 @@ def vis_2d(image, bbox, pts):
     return np.asarray(image)
 
 
-def vis_smpl_3d(pose_output, img, cam_root, f, c, renderer, color_id=0, cam_rt=np.zeros(3),
+def vis_smpl_3d(vertices, img, cam_root, f, c, renderer, color_id=0, cam_rt=np.zeros(3),
                 cam_t=np.zeros(3), J_regressor_h36m=None):
     '''
     input theta_mats: np.ndarray (96, )
@@ -100,7 +100,7 @@ def vis_smpl_3d(pose_output, img, cam_root, f, c, renderer, color_id=0, cam_rt=n
     input c: np.ndarray (2, )
     '''
 
-    vertices = pose_output.pred_vertices.detach().cpu().numpy().squeeze()
+    vertices = vertices.detach().cpu().numpy().squeeze()
     # J_from_verts_h36m = vertices2joints(J_regressor_h36m, pose_output['vertices'].detach().cpu())
 
     # cam_for_render = np.hstack([f[0], c])

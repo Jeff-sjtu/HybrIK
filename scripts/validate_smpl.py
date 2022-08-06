@@ -9,6 +9,8 @@ import torch
 import torch.multiprocessing as mp
 from hybrik.datasets import HP3D, PW3D, H36mSMPL
 from hybrik.models import builder
+from hybrik.models.layers.smpl.lbs import rotmat_to_aa
+from hybrik.models.smplify.smplify import SMPLify3D
 from hybrik.utils.config import update_config
 from hybrik.utils.env import init_dist
 from hybrik.utils.metrics import NullWriter
@@ -50,6 +52,11 @@ parser.add_argument('--launcher', choices=['none', 'pytorch', 'slurm', 'mpi'], d
                     help='job launcher')
 parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed testing')
+parser.add_argument('--post-process',
+                    default=False,
+                    dest='post_process',
+                    help='post process with SMPLify-X',
+                    action='store_true')
 
 opt = parser.parse_args()
 cfg = update_config(opt.cfg)
@@ -73,6 +80,8 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=32, pr
     hm_shape = (hm_shape[1], hm_shape[0])
     pve_list = []
 
+    smplify = SMPLify3D(step_size=1e-2, smpl=m.module.smpl, device=m.device, num_iters=[5, 20], focal_length=1000)
+
     for inps, labels, img_ids, bboxes in tqdm(gt_val_loader, dynamic_ncols=True):
         if isinstance(inps, list):
             inps = [inp.cuda(opt.gpu) for inp in inps]
@@ -93,53 +102,75 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=32, pr
             root = labels.pop('joint_root')
         depth_factor = labels.pop('depth_factor')
 
-        # output = m(inps, trans_inv, intrinsic_param, joint_root, depth_factor, (gt_betas, None, None))
-        output = m(
-            inps,
-            trans_inv=trans_inv, intrinsic_param=intrinsic_param,
-            joint_root=root, depth_factor=depth_factor)
-        if test_vertice:
-            gt_betas = labels['target_beta']
-            gt_thetas = labels['target_theta']
-            gt_output = m.module.forward_gt_theta(gt_thetas, gt_betas)
-
-        pred_uvd_jts = output.pred_uvd_jts
-        pred_xyz_jts_24 = output.pred_xyz_jts_24.reshape(inps.shape[0], -1, 3)[:, :24, :]
-        pred_xyz_jts_24_struct = output.pred_xyz_jts_24_struct.reshape(inps.shape[0], 24, 3)
-        pred_xyz_jts_17 = output.pred_xyz_jts_17.reshape(inps.shape[0], 17, 3)
-        pred_mesh = output.pred_vertices.reshape(inps.shape[0], -1, 3)
-        if test_vertice:
-            gt_mesh = gt_output.vertices.reshape(inps.shape[0], -1, 3)
-            gt_xyz_jts_17 = gt_output.joints_from_verts.reshape(inps.shape[0], 17, 3) / 2
-
-        test_betas = output.pred_shape
-        test_phi = output.pred_phi
-
-        if opt.flip_test:
-            if isinstance(inps, list):
-                inps_flip = [flip(inp) for inp in inps]
-            else:
-                inps_flip = flip(inps)
-
-            output_flip = m(
-                inps_flip,
+        with torch.no_grad():
+            # output = m(inps, trans_inv, intrinsic_param, joint_root, depth_factor, (gt_betas, None, None))
+            output = m(
+                inps,
                 trans_inv=trans_inv, intrinsic_param=intrinsic_param,
-                joint_root=root, depth_factor=depth_factor,
-                flip_item=(pred_uvd_jts, test_phi, test_betas), flip_output=True)
+                joint_root=root, depth_factor=depth_factor)
+            if test_vertice:
+                gt_betas = labels['target_beta']
+                gt_thetas = labels['target_theta']
+                gt_output = m.module.forward_gt_theta(gt_thetas, gt_betas)
 
-            pred_uvd_jts_flip = output_flip.pred_uvd_jts
+            pred_uvd_jts = output.pred_uvd_jts
+            pred_xyz_jts_24 = output.pred_xyz_jts_24.reshape(inps.shape[0], -1, 3)[:, :24, :]
+            pred_xyz_jts_24_struct = output.pred_xyz_jts_24_struct.reshape(inps.shape[0], 24, 3)
+            pred_xyz_jts_17 = output.pred_xyz_jts_17.reshape(inps.shape[0], 17, 3)
+            pred_mesh = output.pred_vertices.reshape(inps.shape[0], -1, 3)
+            if test_vertice:
+                gt_mesh = gt_output.vertices.reshape(inps.shape[0], -1, 3)
+                gt_xyz_jts_17 = gt_output.joints_from_verts.reshape(inps.shape[0], 17, 3) / 2
 
-            pred_xyz_jts_24_flip = output_flip.pred_xyz_jts_24.reshape(inps.shape[0], -1, 3)[:, :24, :]
-            pred_xyz_jts_24_struct_flip = output_flip.pred_xyz_jts_24_struct.reshape(inps.shape[0], 24, 3)
-            pred_xyz_jts_17_flip = output_flip.pred_xyz_jts_17.reshape(inps.shape[0], 17, 3)
-            pred_mesh_flip = output_flip.pred_vertices.reshape(inps.shape[0], -1, 3)
+            test_betas = output.pred_shape
+            test_phi = output.pred_phi
 
-            pred_uvd_jts = pred_uvd_jts_flip
+            if opt.flip_test:
+                if isinstance(inps, list):
+                    inps_flip = [flip(inp) for inp in inps]
+                else:
+                    inps_flip = flip(inps)
 
-            pred_xyz_jts_24 = pred_xyz_jts_24_flip
-            pred_xyz_jts_24_struct = pred_xyz_jts_24_struct_flip
-            pred_xyz_jts_17 = pred_xyz_jts_17_flip
-            pred_mesh = pred_mesh_flip
+                output_flip = m(
+                    inps_flip,
+                    trans_inv=trans_inv, intrinsic_param=intrinsic_param,
+                    joint_root=root, depth_factor=depth_factor,
+                    flip_item=(pred_uvd_jts, test_phi, test_betas), flip_output=True)
+
+                pred_uvd_jts_flip = output_flip.pred_uvd_jts
+
+                pred_xyz_jts_24_flip = output_flip.pred_xyz_jts_24.reshape(inps.shape[0], -1, 3)[:, :24, :]
+                pred_xyz_jts_24_struct_flip = output_flip.pred_xyz_jts_24_struct.reshape(inps.shape[0], 24, 3)
+                pred_xyz_jts_17_flip = output_flip.pred_xyz_jts_17.reshape(inps.shape[0], 17, 3)
+                pred_mesh_flip = output_flip.pred_vertices.reshape(inps.shape[0], -1, 3)
+
+                pred_uvd_jts = pred_uvd_jts_flip
+
+                pred_xyz_jts_24 = pred_xyz_jts_24_flip
+                pred_xyz_jts_24_struct = pred_xyz_jts_24_struct_flip
+                pred_xyz_jts_17 = pred_xyz_jts_17_flip
+                pred_mesh = pred_mesh_flip
+            else:
+                output_flip = output
+
+        if opt.post_process:
+            init_pose = output_flip.pred_theta_mats
+            init_pose = rotmat_to_aa(init_pose.reshape(-1, 3, 3)).reshape(-1, 24 * 3)
+            init_betas = output_flip.pred_shape
+            init_cam_t = output_flip.transl
+            # keypoints_2d_jts = output_flip.pred_uvd_jts.reshape(-1, 29, 3)[:, :24, :2] * m.module.input_size
+            keypoints_3d_jts = output_flip.pred_xyz_jts_24.reshape(-1, 24, 3) * m.module.depth_factor
+            keypoints_3d_jts = keypoints_3d_jts + output_flip.cam_root[:, None, :]
+            keypoints_3d_conf = 1 - output_flip.maxvals.reshape(-1, 29, 1)[:, :24] * 10
+            keypoints_3d = torch.cat((keypoints_3d_jts, keypoints_3d_conf), dim=2)
+            # keypoints_2d = torch.cat((keypoints_2d_jts, keypoints_2d_conf), dim=2)
+            smplify_output = smplify(init_pose, init_betas, init_cam_t, keypoints_3d)
+
+            pred_xyz_jts_24_struct = smplify_output.joints / m.module.depth_factor
+            # print(pred_xyz_jts_17.shape, smplify_output.joints_from_verts.shape)
+            pred_xyz_jts_17 = smplify_output.joints_from_verts / m.module.depth_factor
+            pred_mesh = smplify_output.vertices
+            # print(smplify_output.reprojection_loss[0])
 
         pred_xyz_jts_24 = pred_xyz_jts_24.cpu().data.numpy()
         pred_xyz_jts_24_struct = pred_xyz_jts_24_struct.cpu().data.numpy()
@@ -245,16 +276,14 @@ def main_worker(gpu, opt, cfg):
         train=False)
 
     print('##### Testing on 3DPW #####')
-    with torch.no_grad():
-        gt_tot_err = validate_gt(m, opt, cfg, gt_val_dataset_3dpw, heatmap_to_coord, opt.batch, test_vertice=True)
+    gt_tot_err = validate_gt(m, opt, cfg, gt_val_dataset_3dpw, heatmap_to_coord, opt.batch, test_vertice=True)
     print(f'##### gt 3dpw err: {gt_tot_err} #####')
     # with torch.no_grad():
     #     gt_tot_err = validate_gt(m, opt, cfg, gt_val_dataset_hp3d, heatmap_to_coord, opt.batch)
     # print(f'##### gt 3dhp err: {gt_tot_err} #####')
 
     print('##### Testing on Human3.6M #####')
-    with torch.no_grad():
-        gt_tot_err = validate_gt(m, opt, cfg, gt_val_dataset_h36m, heatmap_to_coord, opt.batch)
+    gt_tot_err = validate_gt(m, opt, cfg, gt_val_dataset_h36m, heatmap_to_coord, opt.batch)
     print(f'##### gt h36m err: {gt_tot_err} #####')
 
 
