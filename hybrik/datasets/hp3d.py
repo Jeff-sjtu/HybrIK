@@ -127,6 +127,8 @@ class HP3D(data.Dataset):
         self.upper_body_ids = (7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
         self.lower_body_ids = (0, 1, 2, 3, 4, 5, 6)
 
+        self.root_idx = self.joints_name.index('pelvis') if self._train else self.EVAL_JOINTS.index(self.joints_name.index('pelvis'))
+
         if cfg.MODEL.EXTRA.PRESET == 'simple_smpl_3d':
             self.transformation = SimpleTransform3DSMPL(
                 self, scale_factor=self._scale_factor,
@@ -150,9 +152,9 @@ class HP3D(data.Dataset):
                 bbox_3d_shape=self.bbox_3d_shape,
                 rot=self._rot, sigma=self._sigma,
                 train=self._train, add_dpg=self._dpg,
-                loss_type=self._loss_type, two_d=True)
+                loss_type=self._loss_type, two_d=True,
+                root_idx=self.root_idx)
 
-        self.root_idx = self.joints_name.index('pelvis') if self._train else self.EVAL_JOINTS.index(self.joints_name.index('pelvis'))
         self.root_idx_17 = 0
         self.lshoulder_idx = self.joints_name.index('left_shoulder') if self._train else self.EVAL_JOINTS.index(self.joints_name.index('left_shoulder'))
         self.rshoulder_idx = self.joints_name.index('right_shoulder') if self._train else self.EVAL_JOINTS.index(self.joints_name.index('right_shoulder'))

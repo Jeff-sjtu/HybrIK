@@ -114,9 +114,8 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
         self.deccam = nn.Linear(1024, 3)
 
         self.focal_length = kwargs['FOCAL_LENGTH']
-        bbox_3d_shape = kwargs['BBOX_3D_SHAPE'] if 'BBOX_3D_SHAPE' in kwargs else (2000, 2000, 2000)
-        self.bbox_3d_shape = torch.tensor(bbox_3d_shape).float()
-        self.depth_factor = self.bbox_3d_shape[2] * 1e-3
+        self.bbox_3d_shape = kwargs['BBOX_3D_SHAPE'] if 'BBOX_3D_SHAPE' in kwargs else (2000, 2000, 2000)
+        self.depth_factor = float(self.bbox_3d_shape[2]) * 1e-3
         self.input_size = 256.0
 
     def _make_deconv_layer(self):

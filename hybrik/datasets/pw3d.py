@@ -149,7 +149,7 @@ class PW3D(data.Dataset):
                 bbox_3d_shape=self.bbox_3d_shape,
                 rot=self._rot, sigma=self._sigma,
                 train=self._train, add_dpg=self._dpg,
-                loss_type=self._loss_type, scale_mult=1)
+                loss_type=self._loss_type)
 
     def __getitem__(self, idx):
         # get image id
