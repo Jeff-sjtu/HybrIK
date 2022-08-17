@@ -33,6 +33,8 @@ In CVPR 2021
 </div>
 
 ## News :triangular_flag_on_post:
+[2022/08/16] [Pretrained model](https://drive.google.com/file/d/1C-jRnay38mJG-0O4_um82o1t7unC1zeT/view?usp=sharing) with HRNet-W48 backbone is available.
+
 [2022/07/31] Training code with predicted camera is released.
 
 [2022/07/25] [HybrIK](https://github.com/Jeff-sjtu/HybrIK) is now supported in [Alphapose](https://github.com/MVIG-SJTU/AlphaPose)! Multi-person demo with pose-tracking is available.
@@ -56,13 +58,16 @@ conda create -n hybrik python=3.7 -y
 conda activate hybrik
 
 # 2. Install PyTorch
-conda install pytorch==1.6.0 torchvision==0.7.0 -c pytorch
+conda install pytorch==1.9.1 torchvision==0.10.1 -c pytorch
 
-# 3. Pull our code
+# 3. Install PyTorch3D (Optional, only for visualization)
+conda install pytorch3d
+
+# 4. Pull our code
 git clone https://github.com/Jeff-sjtu/HybrIK.git
 cd HybrIK
 
-# 4. Install
+# 5. Install
 python setup.py develop
 ```
 
@@ -72,7 +77,7 @@ python setup.py develop
 * Download our pretrained model (with predicted camera) from [ [Google Drive](https://drive.google.com/file/d/16Y_MGUynFeEzV8GVtKTE5AtkHSi3xsF9/view?usp=sharing) | [Baidu](https://pan.baidu.com/s/1kHTKQEKiPnrAKAUzOD-Xww) (code: `4qyv`) ].
 
 ## Demo
-First make sure you download the pretrained model (with predicted camera) and place it in the `${ROOT}` directory, i.e., `./pretrained_w_cam.pth`.
+First make sure you download the pretrained model (with predicted camera) and place it in the `${ROOT}` directory, i.e., `./pretrained_hrnet.pth`.
 
 * Visualize HybrIK on **videos** (run in single frame):
 
@@ -111,7 +116,7 @@ Download *Human3.6M*, *MPI-INF-3DHP*, *3DPW* and *MSCOCO* datasets. You need to 
         `-- val2017
 ```
 * Download Human3.6M parsed annotations. [ [Google](https://drive.google.com/drive/folders/1tLA_XeZ_32Qk86lR06WJhJJXDYrlBJ9r?usp=sharing) | [Baidu](https://pan.baidu.com/s/1bqfVOlQWX0Rfc0Yl1a5VRA) ]
-* Download 3DPW parsed annotations. [ [Google](https://drive.google.com/file/d/1ICr1yIPKOtLn3LsTmcytvE-ZFokPsaw5/view?usp=sharing) | [Baidu](https://pan.baidu.com/s/1d42QyQmMONJgCJvHIU2nsA) ]
+* Download 3DPW parsed annotations. [ [Google](https://drive.google.com/drive/folders/1f7DyxyvlC9z6SFT37eS6TTQiUOXVR9rK?usp=sharing) | [Baidu](https://pan.baidu.com/s/1d42QyQmMONJgCJvHIU2nsA) ]
 * Download MPI-INF-3DHP parsed annotations. [ [Google](https://drive.google.com/drive/folders/1Ms3s7nZ5Nrux3spLxmMMAQWc5aAIecmv?usp=sharing) | [Baidu](https://pan.baidu.com/s/1aVBDudbDRT1w_ZxQc9zicA) ]
 
 
@@ -122,9 +127,9 @@ Download *Human3.6M*, *MPI-INF-3DHP*, *3DPW* and *MSCOCO* datasets. You need to 
 ```
 
 ## Evaluation
-Download the pretrained model [[Google Drive](https://drive.google.com/file/d/16Y_MGUynFeEzV8GVtKTE5AtkHSi3xsF9/view?usp=sharing)].
+Download the pretrained model ([ResNet-34](https://drive.google.com/file/d/16Y_MGUynFeEzV8GVtKTE5AtkHSi3xsF9/view?usp=sharing) or [HRNet-W48](https://drive.google.com/file/d/1C-jRnay38mJG-0O4_um82o1t7unC1zeT/view?usp=sharing)).
 ``` bash
-./scripts/validate_smpl.sh  ./configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix.yaml ./pretrained_w_cam.pth
+./scripts/validate_smpl_cam.sh ./configs/256x192_adam_lr1e-3-hrw48_cam_2x_w_pw3d_3dhp.yaml ./pretrained_hrnet.pth
 ```
 
 
@@ -139,8 +144,8 @@ Download the pretrained model [[Google Drive](https://drive.google.com/file/d/16
 | VIBE *w. 3DPW* | 51.9 | 41.4 |
 | PARE | 49.3 | - |
 | PARE *w. 3DPW* | 46.4 | - |
-| **HybrIK** | **48.8** | **34.5** |
-| **HybrIK** *w. 3DPW* | **45.3** | **36.3** |
+| **HybrIK (ResNet-34)** | **48.8** | **34.5** |
+| **HybrIK (ResNet-34)** *w. 3DPW* | **45.3** | **36.3** |
 
 </center>
 

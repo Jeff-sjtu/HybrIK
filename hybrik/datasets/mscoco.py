@@ -3,13 +3,12 @@ import copy
 import os
 import pickle as pk
 
+import cv2
 import numpy as np
-import scipy.misc
 import torch.utils.data as data
-from pycocotools.coco import COCO
-
 from hybrik.utils.bbox import bbox_clip_xyxy, bbox_xywh_to_xyxy
 from hybrik.utils.presets import SimpleTransform, SimpleTransformCam
+from pycocotools.coco import COCO
 
 
 class Mscoco(data.Dataset):
@@ -114,7 +113,7 @@ class Mscoco(data.Dataset):
         # load ground truth, including bbox, keypoints, image size
         label = copy.deepcopy(self._labels[idx])
 
-        img = scipy.misc.imread(img_path, mode='RGB')
+        img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
         # transform ground truth into training label and apply data augmentation
         target = self.transformation(img, label)
 

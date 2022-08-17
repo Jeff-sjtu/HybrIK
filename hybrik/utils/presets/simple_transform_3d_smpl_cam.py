@@ -132,7 +132,6 @@ class SimpleTransform3DSMPLCam(object):
 
         self.bbox_3d_shape = dataset.bbox_3d_shape
         self._scale_mult = scale_mult
-        self.kinematic = dataset.kinematic
         self.two_d = two_d
 
         # convert to unit: meter
@@ -174,7 +173,9 @@ class SimpleTransform3DSMPLCam(object):
         img[1].div_(0.224)
         img[2].div_(0.229)
 
-        return img, bbox
+        img_center = np.array([float(src.shape[1]) * 0.5, float(src.shape[0]) * 0.5])
+
+        return img, bbox, img_center
 
     def _integral_target_generator(self, joints_3d, num_joints, patch_height, patch_width):
         target_weight = np.ones((num_joints, 3), dtype=np.float32)
@@ -545,6 +546,8 @@ class SimpleTransform3DSMPLCam(object):
         img[1].div_(0.224)
         img[2].div_(0.229)
 
+        img_center = np.array([float(imgwidth) * 0.5, float(imght) * 0.5])
+
         if self.two_d:
             output = {
                 'type': '2d_data',
@@ -561,7 +564,8 @@ class SimpleTransform3DSMPLCam(object):
                 'camera_valid': cam_valid,
                 'target_xyz': torch.from_numpy(target_xyz).float(),
                 'target_xyz_weight': torch.from_numpy(target_xyz_weight).float(),
-                'camera_error': cam_error
+                'camera_error': cam_error,
+                'img_center': torch.from_numpy(img_center).float()
             }
 
         else:
@@ -592,7 +596,8 @@ class SimpleTransform3DSMPLCam(object):
                 'camera_scale': torch.from_numpy(np.array([cam_scale])).float(),
                 'camera_trans': torch.from_numpy(cam_trans).float(),
                 'camera_valid': cam_valid,
-                'camera_error': cam_error
+                'camera_error': cam_error,
+                'img_center': torch.from_numpy(img_center).float()
             }
         return output
 
