@@ -960,6 +960,8 @@ def batch_get_pelvis_orient_svd(rel_pose_skeleton, rel_rest_pose, parents, child
     U = U.to(device=device)
     V = V.to(device=device)
 
+    torch.distributed.barrier()
+
     rot_mat = torch.zeros_like(S)
     rot_mat[mask_zero == 0] = torch.eye(3, device=S.device)
 
@@ -1070,6 +1072,8 @@ def batch_get_3children_orient_svd(rel_pose_skeleton, rel_rest_pose, rot_mat_cha
     U, _, V = torch.svd(S.cpu())
     U = U.to(device=device)
     V = V.to(device=device)
+
+    torch.distributed.barrier()
 
     # rot_mat = torch.bmm(V, U.transpose(1, 2))
     det_u_v = torch.det(torch.bmm(V, U.transpose(1, 2)))
