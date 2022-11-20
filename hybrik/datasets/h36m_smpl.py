@@ -1,12 +1,12 @@
 """Human3.6M dataset."""
-import copy
 import json
 import os
-import pickle as pk
 
 import cv2
+import joblib
 import numpy as np
 import torch.utils.data as data
+
 from hybrik.utils.bbox import bbox_clip_xyxy, bbox_xywh_to_xyxy
 from hybrik.utils.pose_utils import cam2pixel, pixel2cam, reconstruction_error
 from hybrik.utils.presets import (SimpleTransform3DSMPL,
@@ -128,7 +128,7 @@ class H36mSMPL(data.Dataset):
         self.lshoulder_idx_29 = self.joints_name_29.index('left_shoulder')
         self.rshoulder_idx_29 = self.joints_name_29.index('right_shoulder')
 
-        self._items, self._labels = self._lazy_load_json()
+        self.db = self.load_pt()
 
         if cfg.MODEL.EXTRA.PRESET == 'simple_smpl_3d':
             self.transformation = SimpleTransform3DSMPL(
@@ -157,11 +157,13 @@ class H36mSMPL(data.Dataset):
 
     def __getitem__(self, idx):
         # get image id
-        img_path = self._items[idx]
-        img_id = int(self._labels[idx]['img_id'])
+        img_path = self.db['img_path'][idx]
+        img_id = self.db['img_id'][idx]
 
         # load ground truth, including bbox, keypoints, image size
-        label = copy.deepcopy(self._labels[idx])
+        label = {}
+        for k in self.db.keys():
+            label[k] = self.db[k][idx].copy()
 
         img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
         # img = load_image(img_path)
@@ -175,23 +177,35 @@ class H36mSMPL(data.Dataset):
         return img, target, img_id, bbox
 
     def __len__(self):
-        return len(self._items)
+        return len(self.db['img_path'])
 
-    def _lazy_load_json(self):
-        if os.path.exists(self._ann_file + '_smpl_annot_keypoint.pkl') and self._lazy_import:
-            print('Lazy load annot...')
-            with open(self._ann_file + '_smpl_annot_keypoint.pkl', 'rb') as fid:
-                items, labels = pk.load(fid)
+    def load_pt(self):
+        if os.path.exists(self._ann_file + '.pt'):
+            db = joblib.load(self._ann_file + '.pt', 'r')
         else:
-            items, labels = self._load_jsons()
-            try:
-                with open(self._ann_file + '_smpl_annot_keypoint.pkl', 'wb') as fid:
-                    pk.dump((items, labels), fid, pk.HIGHEST_PROTOCOL)
-            except Exception as e:
-                print(e)
-                print('Skip writing to .pkl file.')
+            self._save_pt()
+            db = joblib.load(self._ann_file + '.pt', 'r')
 
-        return items, labels
+        return db
+
+    def _save_pt(self):
+        _items, _labels = self._load_jsons()
+        keys = list(_labels[0].keys())
+        _db = {}
+        for k in keys:
+            _db[k] = []
+
+        print(f'Generating Human3.6M pt: {len(_labels)}...')
+        for obj in _labels:
+            for k in keys:
+                _db[k].append(np.array(obj[k]))
+
+        _db['img_path'] = _items
+        for k in keys:
+            _db[k] = np.stack(_db[k])
+            assert _db[k].shape[0] == len(_labels)
+
+        joblib.dump(_db, self._ann_file + '.pt')
 
     def _load_jsons(self):
         """Load all image paths and labels from JSON annotation files into buffer."""
@@ -269,7 +283,7 @@ class H36mSMPL(data.Dataset):
                 assert (np.sin(angle) - sin < 1e-6).all(), np.sin(angle) - sin
                 phi = np.stack((cos, sin), axis=1)
                 # phi_weight = np.ones_like(phi)
-                phi_weight = (angle > -10) * 1.0 # invalid angles are set to be -999
+                phi_weight = (angle > -10) * 1.0  # invalid angles are set to be -999
                 phi_weight = np.stack([phi_weight, phi_weight], axis=1)
             else:
                 phi = np.zeros((23, 2))

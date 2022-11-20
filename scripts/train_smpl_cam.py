@@ -102,7 +102,7 @@ def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
                     accuvd29=acc_uvd_29_logger.avg,
                     acc17=acc_xyz_17_logger.avg)
             )
-    
+
     if opt.log:
         train_loader.close()
 

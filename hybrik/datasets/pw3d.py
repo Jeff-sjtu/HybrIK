@@ -1,16 +1,17 @@
 """3DPW dataset."""
-import copy
 import json
 import os
 
 import cv2
+import joblib
 import numpy as np
 import torch.utils.data as data
+from pycocotools.coco import COCO
+
 from hybrik.utils.bbox import bbox_clip_xyxy, bbox_xywh_to_xyxy
 from hybrik.utils.pose_utils import pixel2cam, reconstruction_error
 from hybrik.utils.presets import (SimpleTransform3DSMPL,
                                   SimpleTransform3DSMPLCam)
-from pycocotools.coco import COCO
 
 
 class PW3D(data.Dataset):
@@ -87,7 +88,7 @@ class PW3D(data.Dataset):
         self._dpg = dpg
 
         bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
-        self.bbox_3d_shape = [item * 1e-3 for item in bbox_3d_shape] # millimeter -> meter
+        self.bbox_3d_shape = [item * 1e-3 for item in bbox_3d_shape]  # millimeter -> meter
 
         self._scale_factor = cfg.DATASET.SCALE_FACTOR
         self._color_factor = cfg.DATASET.COLOR_FACTOR
@@ -125,7 +126,7 @@ class PW3D(data.Dataset):
         self.lshoulder_idx_24 = self.joints_name_24.index('left_shoulder')
         self.rshoulder_idx_24 = self.joints_name_24.index('right_shoulder')
 
-        self._items, self._labels = self._lazy_load_json()
+        self.db = self.load_pt()
 
         if cfg.MODEL.EXTRA.PRESET == 'simple_smpl_3d':
             self.transformation = SimpleTransform3DSMPL(
@@ -154,11 +155,14 @@ class PW3D(data.Dataset):
 
     def __getitem__(self, idx):
         # get image id
-        img_path = self._items[idx]
-        img_id = int(self._labels[idx]['img_id'])
+        img_path = self.db['img_path'][idx]
+        img_id = self.db['img_id'][idx]
 
         # load ground truth, including bbox, keypoints, image size
-        label = copy.deepcopy(self._labels[idx])
+        label = {}
+        for k in self.db.keys():
+            label[k] = self.db[k][idx].copy()
+
         img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
 
         # transform ground truth into training label and apply data augmentation
@@ -169,7 +173,35 @@ class PW3D(data.Dataset):
         return img, target, img_id, bbox
 
     def __len__(self):
-        return len(self._items)
+        return len(self.db['img_path'])
+
+    def load_pt(self):
+        if os.path.exists(self._ann_file + '.pt'):
+            db = joblib.load(self._ann_file + '.pt', 'r')
+        else:
+            self._save_pt()
+            db = joblib.load(self._ann_file + '.pt', 'r')
+
+        return db
+
+    def _save_pt(self):
+        _items, _labels = self._lazy_load_json()
+        keys = list(_labels[0].keys())
+        _db = {}
+        for k in keys:
+            _db[k] = []
+
+        print(f'Generating 3DPW pt: {len(_labels)}...')
+        for obj in _labels:
+            for k in keys:
+                _db[k].append(np.array(obj[k]))
+
+        _db['img_path'] = _items
+        for k in keys:
+            _db[k] = np.stack(_db[k])
+            assert _db[k].shape[0] == len(_labels)
+
+        joblib.dump(_db, self._ann_file + '.pt')
 
     def _lazy_load_json(self):
         """Load all image paths and labels from json annotation files into buffer."""

@@ -5,7 +5,7 @@ PORT=${3:-23456}
 HOST=$(hostname -i)
 
 python ./scripts/train_smpl.py \
-    --nThreads 0 \
+    --nThreads 16 \
     --launcher pytorch --rank 0 \
     --dist-url tcp://${HOST}:${PORT} \
     --exp-id ${EXPID} \

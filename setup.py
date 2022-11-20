@@ -126,6 +126,7 @@ if __name__ == '__main__':
             'cython', 'opencv-python==4.1.2.30', 'matplotlib',
             'pycocotools', 'tqdm', 'easydict', 'chumpy',
             'pyyaml', 'tb-nightly', 'future', 'ffmpeg-python',
+            'joblib'
         ],
         cmdclass={'build_ext': BuildExtension},
         zip_safe=False)
