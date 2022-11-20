@@ -8,7 +8,6 @@ import numpy as np
 import torch
 import torch.multiprocessing as mp
 import torch.utils.data
-from torch.nn.utils import clip_grad_norm_
 from torch.nn.utils import clip_grad
 
 from hybrik.datasets import MixDataset, MixDatasetCam, PW3D, MixDataset2Cam
@@ -16,7 +15,7 @@ from hybrik.models import builder
 from hybrik.opt import cfg, logger, opt
 from hybrik.utils.env import init_dist
 from hybrik.utils.metrics import DataLogger, NullWriter, calc_coord_accuracy
-from hybrik.utils.transforms import flip, get_func_heatmap_to_coord
+from hybrik.utils.transforms import get_func_heatmap_to_coord
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
@@ -26,8 +25,8 @@ valid_batch = 1 * num_gpu
 
 
 def _init_fn(worker_id):
-    np.random.seed(opt.seed)
-    random.seed(opt.seed)
+    np.random.seed(opt.seed + worker_id)
+    random.seed(opt.seed + worker_id)
 
 
 def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
@@ -137,50 +136,13 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=24, pr
             except AttributeError:
                 assert k == 'type'
 
-        trans_inv = labels.pop('trans_inv')
-        intrinsic_param = labels.pop('intrinsic_param')
+        output = m(inps, flip_test=opt.flip_test, bboxes=bboxes,
+                   img_center=labels['img_center'])
 
-        root = labels.pop('joint_root')
-        depth_factor = labels.pop('depth_factor')
-        flip_output = labels.pop('is_flipped', None)
-
-        output = m(inps, trans_inv=trans_inv, intrinsic_param=intrinsic_param, joint_root=root, depth_factor=depth_factor, flip_output=False)
-
-        # pred_uvd_jts = output.pred_uvd_jts
-        pred_xyz_jts_29 = output.pred_xyz_jts_29.reshape(inps.shape[0], -1, 3)
+        # pred_xyz_jts_29 = output.pred_xyz_jts_29.reshape(inps.shape[0], -1, 3)
         pred_xyz_jts_24 = output.pred_xyz_jts_29.reshape(inps.shape[0], -1, 3)[:, :24, :]
         pred_xyz_jts_24_struct = output.pred_xyz_jts_24_struct.reshape(inps.shape[0], 24, 3)
         pred_xyz_jts_17 = output.pred_xyz_jts_17.reshape(inps.shape[0], 17, 3)
-
-        test_betas = output.pred_shape
-        test_phi = output.pred_phi
-        test_leaf = output.pred_leaf
-
-        if opt.flip_test:
-            if isinstance(inps, list):
-                inps_flip = [flip(inp) for inp in inps]
-            else:
-                inps_flip = flip(inps)
-
-            output_flip = m(inps_flip, 
-                            trans_inv=trans_inv, intrinsic_param=intrinsic_param, joint_root=root, depth_factor=depth_factor,
-                            flip_item=(pred_xyz_jts_29, test_phi, test_leaf, test_betas),
-                            flip_output=True)
-
-            # pred_uvd_jts_flip = output_flip.pred_uvd_jts
-
-            pred_xyz_jts_24_flip = output_flip.pred_xyz_jts_29.reshape(
-                inps.shape[0], -1, 3)[:, :24, :]
-            pred_xyz_jts_24_struct_flip = output_flip.pred_xyz_jts_24_struct.reshape(
-                inps.shape[0], 24, 3)
-            pred_xyz_jts_17_flip = output_flip.pred_xyz_jts_17.reshape(
-                inps.shape[0], 17, 3)
-
-            # pred_uvd_jts = pred_uvd_jts_flip
-
-            pred_xyz_jts_24 = pred_xyz_jts_24_flip
-            pred_xyz_jts_24_struct = pred_xyz_jts_24_struct_flip
-            pred_xyz_jts_17 = pred_xyz_jts_17_flip
 
         pred_xyz_jts_24 = pred_xyz_jts_24.cpu().data.numpy()
         pred_xyz_jts_24_struct = pred_xyz_jts_24_struct.cpu().data.numpy()
@@ -193,10 +155,10 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=24, pr
         #     pred_uvd_jts.shape[0], -1, 3)
         pred_xyz_jts_24 = pred_xyz_jts_24.reshape(
             pred_xyz_jts_24.shape[0], 24, 3)
-        pred_scores = output.maxvals.cpu().data[:, :29]
+        # pred_scores = output.maxvals.cpu().data[:, :29]
 
         for i in range(pred_xyz_jts_17.shape[0]):
-            bbox = bboxes[i].tolist()
+            # bbox = bboxes[i].tolist()
             kpt_pred[int(img_ids[i])] = {
                 'xyz_17': pred_xyz_jts_17[i],
                 'xyz_24': pred_xyz_jts_24[i]
@@ -352,7 +314,7 @@ def main_worker(gpu, opt, cfg):
             if opt.log:
                 # Save checkpoint
                 torch.save(m.module.state_dict(), './exp/{}/{}-{}/model_{}.pth'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id, opt.epoch))
-            
+
             # Prediction Test
             with torch.no_grad():
                 gt_tot_err_h36m = validate_gt(m, opt, cfg, gt_val_dataset_h36m, heatmap_to_coord)
@@ -393,7 +355,6 @@ def preset_model(cfg):
         model._initialize()
 
     return model
-
 
 
 if __name__ == "__main__":

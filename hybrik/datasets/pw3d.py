@@ -315,9 +315,8 @@ class PW3D(data.Dataset):
 
     def evaluate_uvd_24(self, preds, result_dir):
         print('Evaluation start...')
-        gts = self._labels
-        assert len(gts) == len(preds)
-        sample_num = len(gts)
+        assert len(self.db['img_id']) == len(preds)
+        sample_num = len(self.db['img_id'])
 
         pred_save = []
         error = np.zeros((sample_num, 24))  # joint error
@@ -325,13 +324,12 @@ class PW3D(data.Dataset):
         error_y = np.zeros((sample_num, 24))  # joint error
         error_z = np.zeros((sample_num, 24))  # joint error
         for n in range(sample_num):
-            gt = gts[n]
-            image_id = gt['img_id']
-            f = gt['f']
-            c = gt['c']
-            bbox = gt['bbox']
-            gt_3d_root = gt['root_cam'].copy()
-            gt_3d_kpt = gt['joint_cam_29'][:24, :].copy()
+            image_id = self.db['img_id'][n]
+            f = self.db['f'][n]
+            c = self.db['c'][n]
+            bbox = self.db['bbox'][n]
+            gt_3d_root = self.db['root_cam'][n].copy()
+            gt_3d_kpt = self.db['joint_cam_29'][n][:24, :].copy()
 
             # gt_vis = gt['joint_vis']
 
@@ -353,11 +351,11 @@ class PW3D(data.Dataset):
             error_x[n] = np.abs(pred_3d_kpt[:, 0] - gt_3d_kpt[:, 0])
             error_y[n] = np.abs(pred_3d_kpt[:, 1] - gt_3d_kpt[:, 1])
             error_z[n] = np.abs(pred_3d_kpt[:, 2] - gt_3d_kpt[:, 2])
-            img_name = gt['img_path']
+            img_name = self.db['img_path'][n]
 
             # prediction save
-            pred_save.append({'img_name': img_name, 'joint_cam': pred_3d_kpt.tolist(
-            ), 'bbox': bbox, 'root_cam': gt_3d_root.tolist()})  # joint_cam is root-relative coordinate
+            pred_save.append({'img_name': str(img_name), 'joint_cam': pred_3d_kpt.tolist(
+            ), 'bbox': bbox.tolist(), 'root_cam': gt_3d_root.tolist()})  # joint_cam is root-relative coordinate
 
         # total error
         tot_err = np.mean(error) * 1000
@@ -380,9 +378,8 @@ class PW3D(data.Dataset):
 
     def evaluate_xyz_24(self, preds, result_dir):
         print('Evaluation start...')
-        gts = self._labels
-        assert len(gts) == len(preds)
-        sample_num = len(gts)
+        assert len(self.db['img_id']) == len(preds)
+        sample_num = len(self.db['img_id'])
 
         pred_save = []
         error = np.zeros((sample_num, 24))  # joint error
@@ -391,11 +388,10 @@ class PW3D(data.Dataset):
         error_y = np.zeros((sample_num, 24))  # joint error
         error_z = np.zeros((sample_num, 24))  # joint error
         for n in range(sample_num):
-            gt = gts[n]
-            image_id = gt['img_id']
-            bbox = gt['bbox']
-            gt_3d_root = gt['root_cam'].copy()
-            gt_3d_kpt = gt['joint_cam_29'][:24, :].copy()
+            image_id = self.db['img_id'][n]
+            bbox = self.db['bbox'][n]
+            gt_3d_root = self.db['root_cam'][n].copy()
+            gt_3d_kpt = self.db['joint_cam_29'][n][:24, :].copy()
 
             # gt_vis = gt['joint_vis']
 
@@ -416,11 +412,11 @@ class PW3D(data.Dataset):
             error_x[n] = np.abs(pred_3d_kpt[:, 0] - gt_3d_kpt[:, 0])
             error_y[n] = np.abs(pred_3d_kpt[:, 1] - gt_3d_kpt[:, 1])
             error_z[n] = np.abs(pred_3d_kpt[:, 2] - gt_3d_kpt[:, 2])
-            img_name = gt['img_path']
+            img_name = self.db['img_path'][n]
 
             # prediction save
-            pred_save.append({'img_name': img_name, 'joint_cam': pred_3d_kpt.tolist(
-            ), 'bbox': bbox, 'root_cam': gt_3d_root.tolist()})  # joint_cam is root-relative coordinate
+            pred_save.append({'img_name': str(img_name), 'joint_cam': pred_3d_kpt.tolist(
+            ), 'bbox': bbox.tolist(), 'root_cam': gt_3d_root.tolist()})  # joint_cam is root-relative coordinate
 
         # total error
         tot_err = np.mean(error) * 1000
@@ -441,9 +437,8 @@ class PW3D(data.Dataset):
 
     def evaluate_xyz_17(self, preds, result_dir):
         print('Evaluation start...')
-        gts = self._labels
-        assert len(gts) == len(preds)
-        sample_num = len(gts)
+        assert len(self.db['img_id']) == len(preds)
+        sample_num = len(self.db['img_id'])
 
         pred_save = []
         error = np.zeros((sample_num, len(self.EVAL_JOINTS)))  # joint error
@@ -453,11 +448,10 @@ class PW3D(data.Dataset):
         error_z = np.zeros((sample_num, len(self.EVAL_JOINTS)))  # joint error
         # error for each sequence
         for n in range(sample_num):
-            gt = gts[n]
-            image_id = gt['img_id']
-            bbox = gt['bbox']
-            gt_3d_root = gt['root_cam']
-            gt_3d_kpt = gt['joint_relative_17']
+            image_id = self.db['img_id'][n]
+            bbox = self.db['bbox'][n]
+            gt_3d_root = self.db['root_cam'][n]
+            gt_3d_kpt = self.db['joint_relative_17'][n]
 
             # gt_vis = gt['joint_vis']
 
@@ -480,11 +474,11 @@ class PW3D(data.Dataset):
             error_x[n] = np.abs(pred_3d_kpt[:, 0] - gt_3d_kpt[:, 0])
             error_y[n] = np.abs(pred_3d_kpt[:, 1] - gt_3d_kpt[:, 1])
             error_z[n] = np.abs(pred_3d_kpt[:, 2] - gt_3d_kpt[:, 2])
-            img_name = gt['img_path']
+            img_name = self.db['img_path'][n]
 
             # prediction save
-            pred_save.append({'img_name': img_name, 'joint_cam': pred_3d_kpt.tolist(
-            ), 'bbox': bbox, 'root_cam': gt_3d_root.tolist()})  # joint_cam is root-relative coordinate
+            pred_save.append({'img_name': str(img_name), 'joint_cam': pred_3d_kpt.tolist(
+            ), 'bbox': bbox.tolist(), 'root_cam': gt_3d_root.tolist()})  # joint_cam is root-relative coordinate
 
         # total error
         tot_err = np.mean(error) * 1000
