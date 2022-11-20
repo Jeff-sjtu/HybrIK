@@ -100,7 +100,7 @@ class Mscoco(data.Dataset):
                 output_size=self._output_size,
                 rot=self._rot, sigma=self._sigma,
                 train=self._train, add_dpg=self._dpg,
-                loss_type=self._loss_type, dict_output=True, 
+                loss_type=self._loss_type, dict_output=True,
                 bbox_3d_shape=self.bbox_3d_shape)
 
         self._items, self._labels = self._lazy_load_json()

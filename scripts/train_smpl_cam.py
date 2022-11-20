@@ -87,10 +87,9 @@ def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
         optimizer.zero_grad()
         loss.backward()
 
-        if robust_train:
-            for group in optimizer.param_groups:
-                for param in group["params"]:
-                    clip_grad.clip_grad_norm_(param, 5)
+        for group in optimizer.param_groups:
+            for param in group["params"]:
+                clip_grad.clip_grad_norm_(param, 5)
 
         optimizer.step()
 
