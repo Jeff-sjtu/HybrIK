@@ -98,6 +98,7 @@ class MixDataset2Cam(data.Dataset):
         'target_twist_weight',
         'depth_factor',
         'target_xyz_weight_24',
+        'img_center',
         'camera_scale',
         'camera_trans',
         'camera_valid',

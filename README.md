@@ -54,21 +54,24 @@ In CVPR 2021
 
 ``` bash
 # 1. Create a conda virtual environment.
-conda create -n hybrik python=3.7 -y
+conda create -n hybrik python=3.8 -y
 conda activate hybrik
 
 # 2. Install PyTorch
 conda install pytorch==1.9.1 torchvision==0.10.1 -c pytorch
 
 # 3. Install PyTorch3D (Optional, only for visualization)
-conda install pytorch3d
+conda install -c fvcore -c iopath -c conda-forge fvcore iopath
+conda install -c bottler nvidiacub
+pip install git+ssh://git@github.com/facebookresearch/pytorch3d.git@stable
 
 # 4. Pull our code
 git clone https://github.com/Jeff-sjtu/HybrIK.git
 cd HybrIK
 
 # 5. Install
-python setup.py develop
+pip install pycocotools
+python setup.py develop  # or "pip install -e ."
 ```
 
 ## Download models

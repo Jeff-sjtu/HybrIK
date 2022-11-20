@@ -138,9 +138,6 @@ class L1LossDimSMPLCam(nn.Module):
         loss = loss_beta * self.beta_weight + loss_theta * self.theta_weight
         loss += loss_twist * self.twist_weight
 
-        if epoch_num > self.pretrain_epoch:
-            loss += loss_xyz * self.xyz24_weight
-
         loss += loss_uvd * self.uvd24_weight
 
         smpl_weight = (target_xyz_weight.sum(axis=1) > 3).float()
@@ -152,9 +149,6 @@ class L1LossDimSMPLCam(nn.Module):
         trans_loss = self.criterion_smpl(pred_trans, target_trans)
         scale_loss = self.criterion_smpl(pred_scale, target_scale)
 
-        if epoch_num > self.pretrain_epoch:
-            loss += 0.1 * (trans_loss + scale_loss)
-        else:
-            loss += 1 * (trans_loss + scale_loss)
+        loss += 1 * (trans_loss + scale_loss)
 
         return loss

@@ -59,18 +59,14 @@ def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
 
         output = m(inps, trans_inv=trans_inv, intrinsic_param=intrinsic_param, joint_root=root, depth_factor=depth_factor)
 
-        robust_train = cfg.LOSS.ELEMENTS.get('RUBOST_TRAIN', False)
-        if robust_train:
-            loss = criterion(output, labels, epoch_num=epoch_num)
-        else:
-            loss = criterion(output, labels)
+        loss = criterion(output, labels)
 
         pred_uvd_jts = output.pred_uvd_jts
         pred_xyz_jts_17 = output.pred_xyz_jts_17
         label_masks_29 = labels['target_weight_29']
         label_masks_17 = labels['target_weight_17']
 
-        if pred_uvd_jts.shape[1] == 24 or pred_uvd_jts.shape[1] == 72 :
+        if pred_uvd_jts.shape[1] == 24 or pred_uvd_jts.shape[1] == 72:
             pred_uvd_jts = pred_uvd_jts.cpu().reshape(pred_uvd_jts.shape[0], 24, 3)
             gt_uvd_jts = labels['target_uvd_29'].cpu().reshape(pred_uvd_jts.shape[0], 29, 3)[:, :24, :]
             gt_uvd_mask = label_masks_29.cpu().reshape(pred_uvd_jts.shape[0], 29, 3)[:, :24, :]

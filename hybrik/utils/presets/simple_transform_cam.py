@@ -278,6 +278,8 @@ class SimpleTransformCam(object):
         img[1].div_(0.224)
         img[2].div_(0.229)
 
+        img_center = np.array([float(imgwidth) * 0.5, float(imght) * 0.5])
+
         # if self.dict_output:
         output = {
             'type': '2d_data',
@@ -289,6 +291,7 @@ class SimpleTransformCam(object):
             'joint_root': torch.from_numpy(joint_root).float(),
             'depth_factor': torch.from_numpy(depth_factor).float(),
             'bbox': torch.Tensor(bbox),
+            'img_center': torch.from_numpy(img_center).float(),
             'camera_scale': torch.from_numpy(np.array([cam_scale])).float(),
             'camera_trans': torch.from_numpy(cam_trans).float(),
             'camera_valid': 0.0,
