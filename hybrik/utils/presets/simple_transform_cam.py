@@ -2,7 +2,6 @@ import math
 import random
 
 import cv2
-from matplotlib.pyplot import get
 import numpy as np
 import torch
 
@@ -11,10 +10,11 @@ from ..transforms import (addDPG, affine_transform, flip_joints_3d,
                           get_affine_transform, im_to_torch)
 
 skeleton_coco = np.array([(-1, -1)] * 28).astype(int)
-skeleton_coco[ [6, 7, 17, 18, 19, 20] ] = np.array([
-        (13, 15), (14, 16), (5, 7), (6, 8), (7, 9), (8, 10)
+skeleton_coco[[6, 7, 17, 18, 19, 20]] = np.array([
+    (13, 15), (14, 16), (5, 7), (6, 8), (7, 9), (8, 10)
 ]).astype(int)
 # print('skeleton_coco', skeleton_coco)
+
 
 class SimpleTransformCam(object):
     """Generation of cropped input person and pose heatmaps from SimplePose.
@@ -252,7 +252,7 @@ class SimpleTransformCam(object):
         # generate training targets
         if self._loss_type == 'MSELoss':
             target, target_weight = self._target_generator(joints, self.num_joints)
-        elif 'LocationLoss' in self._loss_type or 'L1Loss' in self._loss_type:
+        else:
             target, target_weight = self._integral_target_generator(joints, self.num_joints, inp_h, inp_w)
 
         bbox = _center_scale_to_box(center, scale)

@@ -339,10 +339,10 @@ def preset_model(cfg):
 
     if cfg.MODEL.PRETRAINED:
         logger.info(f'Loading model from {cfg.MODEL.PRETRAINED}...')
-        model.load_state_dict(torch.load(cfg.MODEL.PRETRAINED))
+        model.load_state_dict(torch.load(cfg.MODEL.PRETRAINED, map_location='cpu'))
     elif cfg.MODEL.TRY_LOAD:
         logger.info(f'Loading model from {cfg.MODEL.TRY_LOAD}...')
-        pretrained_state = torch.load(cfg.MODEL.TRY_LOAD)
+        pretrained_state = torch.load(cfg.MODEL.TRY_LOAD, map_location='cpu')
         model_state = model.state_dict()
         pretrained_state = {k: v for k, v in pretrained_state.items()
                             if k in model_state and v.size() == model_state[k].size()}

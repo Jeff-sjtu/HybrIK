@@ -616,7 +616,7 @@ def get_hrnet(type_name, num_joints, depth_dim, **kwargs):
 
     model = PoseHighResolutionNet(cfg, **kwargs)
 
-    # if is_train:
-    #     model.init_weights(pretrain)
+    # if 'is_train' in kwargs.keys() and kwargs['is_train']:
+    #     model.init_weights(kwargs['pretrain'])
 
     return model
