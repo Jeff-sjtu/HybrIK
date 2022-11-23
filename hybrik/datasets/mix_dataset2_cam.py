@@ -32,7 +32,7 @@ s_3dhp_2_smpl_jt = [
     9, 14,
     10, 15,
     11, 16,
-    -1, -1, # 23
+    -1, -1,  # 23
     # 7, 
     # -1, -1,
     # 21, 26
@@ -253,10 +253,12 @@ class MixDataset2Cam(data.Dataset):
             target['target_weight_29'] = label_uvd_29_mask
             target['target_xyz_17'] = label_xyz_17
             target['target_weight_17'] = label_xyz_17_mask
-            target['target_theta'] = torch.zeros(24 * 4)
+            # target['target_theta'] = torch.zeros(24 * 4)
+            target['target_theta'] = torch.zeros(24 * 9)
             target['target_beta'] = torch.zeros(10)
             target['target_smpl_weight'] = torch.zeros(1)
-            target['target_theta_weight'] = torch.zeros(24 * 4)
+            # target['target_theta_weight'] = torch.zeros(24 * 4)
+            target['target_theta_weight'] = torch.zeros(24 * 9)
             target['target_twist'] = torch.zeros(23, 2)
             target['target_twist_weight'] = torch.zeros(23, 2)
             target['target_xyz_weight_24'] = label_xyz_24_mask

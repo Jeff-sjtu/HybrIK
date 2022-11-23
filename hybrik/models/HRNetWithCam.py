@@ -332,7 +332,7 @@ class HRNetSMPLCam(nn.Module):
         pred_xyz_jts_24_struct = output.joints.float() / self.depth_factor
         #  -0.5 ~ 0.5
         pred_xyz_jts_17 = output.joints_from_verts.float() / self.depth_factor
-        pred_theta_mats = output.rot_mats.float().reshape(batch_size, 24 * 4)
+        pred_theta_mats = output.rot_mats.float().reshape(batch_size, 24 * 9)
         pred_xyz_jts_24 = pred_xyz_jts_29[:, :24, :].reshape(batch_size, 72)
         pred_xyz_jts_24_struct = pred_xyz_jts_24_struct.reshape(batch_size, 72)
         pred_xyz_jts_17_flat = pred_xyz_jts_17.reshape(batch_size, 17 * 3)

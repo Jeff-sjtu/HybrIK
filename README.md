@@ -6,7 +6,7 @@
 
 
 <div align="center">
-<img src="assets/taiji.gif" width="260" height="160"> <img src="assets/dancer3.gif" width="260" height="160">
+<img src="assets/hybrik_dance1.gif" height="160"> <img src="assets/hybrik_dance2.gif" height="160"> <img src="assets/hybrik_dance3.gif" height="160">
 </div>
 
 

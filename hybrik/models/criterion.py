@@ -22,7 +22,7 @@ def weighted_l1_loss(input, target, weights, size_average):
 def weighted_laplace_loss(input, sigma, target, weights, size_average):
     input = input
     target = target
-    out = torch.log(sigma / amp) + torch.abs(input - target) / (math.sqrt(2) * sigma + 1e-9)
+    out = torch.log(sigma / amp) + torch.abs(input - target) / (math.sqrt(2) * sigma + 1e-5)
     out = out * weights
     if size_average and weights.sum() > 0:
         return out.sum() / weights.sum()

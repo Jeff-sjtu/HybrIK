@@ -991,6 +991,12 @@ def batch_get_pelvis_orient(rel_pose_skeleton, rel_rest_pose, parents, children,
     spine_norm = torch.norm(spine_final_loc, dim=1, keepdim=True)
     spine_norm = spine_final_loc / (spine_norm + 1e-8)
 
+    assert torch.sum(torch.isnan(spine_rest_loc)
+                     ) == 0, ('spine_rest_loc', spine_rest_loc)
+
+    assert torch.sum(torch.isnan(spine_final_loc)
+                     ) == 0, ('spine_final_loc', spine_final_loc)
+
     rot_mat_spine = vectors2rotmat(spine_rest_loc, spine_final_loc, dtype)
 
     assert torch.sum(torch.isnan(rot_mat_spine)

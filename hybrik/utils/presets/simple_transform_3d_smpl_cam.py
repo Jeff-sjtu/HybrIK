@@ -8,7 +8,7 @@ import torch
 from ..bbox import _box_to_center_scale, _center_scale_to_box
 from ..transforms import (addDPG, affine_transform, flip_joints_3d, flip_thetas, flip_xyz_joints_3d,
                           get_affine_transform, im_to_torch, batch_rodrigues_numpy, flip_twist,
-                          rotmat_to_quat_numpy, rotate_xyz_jts, rot_aa, flip_cam_xyz_joints_3d)
+                          rotate_xyz_jts, rot_aa, flip_cam_xyz_joints_3d)
 from ..pose_utils import get_intrinsic_metrix
 
 s_coco_2_smpl_jt = [
@@ -105,7 +105,7 @@ class SimpleTransform3DSMPLCam(object):
     def __init__(self, dataset, scale_factor, color_factor, occlusion, add_dpg,
                  input_size, output_size, depth_dim, bbox_3d_shape,
                  rot, sigma, train, loss_type='MSELoss', scale_mult=1.25, focal_length=1000, two_d=False,
-                 root_idx=0, get_paf=False):
+                 root_idx=0):
         if two_d:
             self._joint_pairs = dataset.joint_pairs
         else:
@@ -139,9 +139,6 @@ class SimpleTransform3DSMPLCam(object):
 
         self.focal_length = focal_length
         self.root_idx = root_idx
-
-        self.get_paf = get_paf
-        # self.use_camera = use_camera
 
         if train:
             self.num_joints_half_body = dataset.num_joints_half_body
@@ -454,7 +451,6 @@ class SimpleTransform3DSMPLCam(object):
             joint_cam_17_xyz = joint_cam_17
             joints_cam_24_xyz = joint_cam_29[:24]
 
-
             if random.random() > 0.75 and self._train:
                 assert src.shape[2] == 3
                 src = src[:, ::-1, :]
@@ -470,8 +466,8 @@ class SimpleTransform3DSMPLCam(object):
             # rotate global theta
             theta[0, :3] = rot_aa(theta[0, :3], r)
 
-            theta_rot_mat = batch_rodrigues_numpy(theta)
-            theta_quat = rotmat_to_quat_numpy(theta_rot_mat).reshape(24 * 4)
+            theta_rot_mat = batch_rodrigues_numpy(theta).reshape(24 * 9)
+            # theta_quat = rotmat_to_quat_numpy(theta_rot_mat).reshape(24 * 4)
 
             # rotate xyz joints
             joint_cam_17_xyz = rotate_xyz_jts(joint_cam_17_xyz, r)
@@ -497,9 +493,10 @@ class SimpleTransform3DSMPLCam(object):
                     joints_29_uvd[i, 0:2, 0] = affine_transform(joints_29_uvd[i, 0:2, 0], trans)
             
             target_smpl_weight = torch.ones(1).float()
-            theta_24_weights = np.ones((24, 4))
-
-            theta_24_weights = theta_24_weights.reshape(24 * 4)
+            # theta_24_weights = np.ones((24, 4))
+            # theta_24_weights = theta_24_weights.reshape(24 * 4)
+            theta_24_weights = np.ones((24, 9))
+            theta_24_weights = theta_24_weights.reshape(24 * 9)
 
             # generate training targets
             target_uvd_29, target_weight_29 = self._integral_uvd_target_generator(joints_29_uvd, 29, inp_h, inp_w)
@@ -517,9 +514,9 @@ class SimpleTransform3DSMPLCam(object):
             if self.focal_length > 0:
                 cam_scale, cam_trans, cam_valid, cam_error, new_uvd = self.calc_cam_scale_trans2(
                                                                 target_xyz_24.reshape(-1, 3).copy(), 
-                                                                tmp_uvd_24.copy(), 
+                                                                tmp_uvd_24.copy(),
                                                                 tmp_uvd_24_weight.copy())
-            
+
                 target_uvd_29 = (target_uvd_29 * target_weight_29).reshape(-1, 3)
             else:
                 cam_scale = 1
@@ -572,7 +569,8 @@ class SimpleTransform3DSMPLCam(object):
             output = {
                 'type': '3d_data_w_smpl',
                 'image': img,
-                'target_theta': torch.from_numpy(theta_quat).float(),
+                # 'target_theta': torch.from_numpy(theta_quat).float(),
+                'target_theta': torch.from_numpy(theta_rot_mat).float(),
                 'target_theta_weight': torch.from_numpy(theta_24_weights).float(),
                 'target_beta': torch.from_numpy(beta).float(),
                 'target_smpl_weight': target_smpl_weight,
@@ -662,7 +660,7 @@ class SimpleTransform3DSMPLCam(object):
             # print('bad data')
             return 0, np.zeros(2), 0.0, -1, uvd_29
 
-        xyz_29 = xyz_29 * self.depth_factor2meter # convert to meter
+        xyz_29 = xyz_29 * self.depth_factor2meter  # convert to meter
         new_uvd = uvd_29.copy()
 
         num_joints = len(uvd_29)
