@@ -152,6 +152,20 @@ Download the pretrained model ([ResNet-34](https://drive.google.com/file/d/16Y_M
 
 </center>
 
+## MODEL ZOO
+
+| Backbone | Training Data |     PA-MPJPE (3DPW)     | MPJPE (3DPW) | PA-MPJPE (Human3.6M) | MPJPE (Human3.6M) |  Download | Config |  
+|----------|----------|------------|------------|-------|-----------|--------|--------------|
+| ResNet-34           | w/o 3DPW | | | | | [model]() | [cfg]()    |
+| ResNet-34          | w/ 3DPW | 44.5 | 72.4 | 33.8 | 55.5 | [model](https://drive.google.com/file/d/19ktHbERz0Un5EzJYZBdzdzTrFyd9gLCx/view?usp=share_link) | [cfg](./configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix_w_pw3d.yaml)    |
+| HRNet-W48           | w/o 3DPW | 48.6 | 88.0 | 29.5 | 50.4 | [model](https://drive.google.com/file/d/1o3z99bebm2XImElc3XEUzTNVhQboGJE9/view?usp=share_link) | [cfg](./configs/256x192_adam_lr1e-3-hrw48_cam_2x_wo_pw3d.yaml)    |
+| HRNet-W48          | w/ 3DPW | 41.8 | 71.3 | 29.8 | 47.1 | [model](https://drive.google.com/file/d/1gp3549vIEKfbc8SDQ-YF3Idi1aoR3DkW/view?usp=share_link) | [cfg](configs/256x192_adam_lr1e-3-hrw48_cam_2x_w_pw3d_3dhp.yaml)    |
+
+
+#### Notes
+- All models assume a fixed focal length and predict camera parameters.
+- Flip test is used by default.
+
 
 ## Citing
 If our code helps your research, please consider citing the following paper:

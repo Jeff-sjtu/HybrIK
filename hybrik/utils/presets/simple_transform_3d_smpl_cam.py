@@ -185,12 +185,12 @@ class SimpleTransform3DSMPLCam(object):
         target[:, 1] = joints_3d[:, 1, 0] / patch_height - 0.5
         target[:, 2] = joints_3d[:, 2, 0] / self.bbox_3d_shape[0]
 
-        target_weight[target[:, 0] > 0.5] = 0
-        target_weight[target[:, 0] < -0.5] = 0
-        target_weight[target[:, 1] > 0.5] = 0
-        target_weight[target[:, 1] < -0.5] = 0
-        target_weight[target[:, 2] > 0.5] = 0
-        target_weight[target[:, 2] < -0.5] = 0
+        # target_weight[target[:, 0] > 0.5] = 0
+        # target_weight[target[:, 0] < -0.5] = 0
+        # target_weight[target[:, 1] > 0.5] = 0
+        # target_weight[target[:, 1] < -0.5] = 0
+        # target_weight[target[:, 2] > 0.5] = 0
+        # target_weight[target[:, 2] < -0.5] = 0
 
         target = target.reshape((-1))
         target_weight = target_weight.reshape((-1))
@@ -208,12 +208,12 @@ class SimpleTransform3DSMPLCam(object):
         target[:, 1] = joints_3d[:, 1, 0] / patch_height - 0.5
         target[:, 2] = joints_3d[:, 2, 0] / self.bbox_3d_shape[2]
 
-        target_weight[target[:, 0] > 0.5] = 0
-        target_weight[target[:, 0] < -0.5] = 0
-        target_weight[target[:, 1] > 0.5] = 0
-        target_weight[target[:, 1] < -0.5] = 0
-        target_weight[target[:, 2] > 0.5] = 0
-        target_weight[target[:, 2] < -0.5] = 0
+        # target_weight[target[:, 0] > 0.5] = 0
+        # target_weight[target[:, 0] < -0.5] = 0
+        # target_weight[target[:, 1] > 0.5] = 0
+        # target_weight[target[:, 1] < -0.5] = 0
+        # target_weight[target[:, 2] > 0.5] = 0
+        # target_weight[target[:, 2] < -0.5] = 0
 
         target = target.reshape((-1))
         target_weight = target_weight.reshape((-1))
@@ -401,8 +401,13 @@ class SimpleTransform3DSMPLCam(object):
 
             # half body transform
             if self._train and (np.sum(joints_vis_17[:, 0]) > self.num_joints_half_body and np.random.rand() < self.prob_half_body):
+                # self.num_joints = 17
+                # c_half_body, s_half_body = self.half_body_transform(
+                #     gt_joints_17[:, :, 0], joints_vis_17
+                # )
+                self.num_joints = 24
                 c_half_body, s_half_body = self.half_body_transform(
-                    gt_joints_17[:, :, 0], joints_vis_17
+                    gt_joints_29[:, :, 0], joints_vis_29
                 )
 
                 if c_half_body is not None and s_half_body is not None:
@@ -513,9 +518,9 @@ class SimpleTransform3DSMPLCam(object):
 
             if self.focal_length > 0:
                 cam_scale, cam_trans, cam_valid, cam_error, new_uvd = self.calc_cam_scale_trans2(
-                                                                target_xyz_24.reshape(-1, 3).copy(), 
-                                                                tmp_uvd_24.copy(),
-                                                                tmp_uvd_24_weight.copy())
+                    target_xyz_24.reshape(-1, 3).copy(),
+                    tmp_uvd_24.copy(),
+                    tmp_uvd_24_weight.copy())
 
                 target_uvd_29 = (target_uvd_29 * target_weight_29).reshape(-1, 3)
             else:
