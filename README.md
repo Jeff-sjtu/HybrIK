@@ -33,6 +33,8 @@ In CVPR 2021
 </div>
 
 ## News :triangular_flag_on_post:
+[2022/12/03] HybrIK for Blender [add-on](https://github.com/Jeff-sjtu/HybrIK/releases/download/add-on/hybrik_blender_addon.zip) is now available for download. The output of HybrIK can be imported to Blender and saved as `fbx`.
+
 [2022/08/16] [Pretrained model](https://drive.google.com/file/d/1C-jRnay38mJG-0O4_um82o1t7unC1zeT/view?usp=sharing) with HRNet-W48 backbone is available.
 
 [2022/07/31] Training code with predicted camera is released.
@@ -82,12 +84,12 @@ python setup.py develop  # or "pip install -e ."
 ## Demo
 First make sure you download the pretrained model (with predicted camera) and place it in the `${ROOT}` directory, i.e., `./pretrained_hrnet.pth`.
 
-* Visualize HybrIK on **videos** (run in single frame):
+* Visualize HybrIK on **videos** (run in single frame) and save results:
 
 ``` bash
-python scripts/demo_video.py --video-name examples/dance.mp4 --out-dir res_dance
+python scripts/demo_video.py --video-name examples/dance.mp4 --out-dir res_dance --save-pk
 ```
-
+The saved results in `./res_dance/res.pk` can be imported to Blender with our [add-on](https://github.com/Jeff-sjtu/HybrIK/releases/download/add-on/hybrik_blender_addon.zip).
 
 * Visualize HybrIK on **images**:
 

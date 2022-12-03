@@ -1,19 +1,21 @@
 """Image demo script."""
 import argparse
 import os
+import pickle as pk
 
 import cv2
 import numpy as np
 import torch
 from easydict import EasyDict as edict
+from torchvision import transforms as T
+from torchvision.models.detection import fasterrcnn_resnet50_fpn
+from tqdm import tqdm
+
 from hybrik.models import builder
 from hybrik.utils.config import update_config
 from hybrik.utils.presets import SimpleTransform3DSMPLCam
 from hybrik.utils.render_pytorch3d import render_mesh
 from hybrik.utils.vis import get_max_iou_box, get_one_box, vis_2d
-from torchvision import transforms as T
-from torchvision.models.detection import fasterrcnn_resnet50_fpn
-from tqdm import tqdm
 
 det_transform = T.Compose([T.ToTensor()])
 
@@ -74,7 +76,7 @@ parser.add_argument('--out-dir',
                     help='output folder',
                     default='',
                     type=str)
-parser.add_argument('--save-pt', default=False, dest='save_pt',
+parser.add_argument('--save-pk', default=False, dest='save_pk',
                     help='save prediction', action='store_true')
 parser.add_argument('--save-img', default=False, dest='save_img',
                     help='save prediction', action='store_true')
@@ -103,14 +105,14 @@ res_keys = [
     'pred_xyz_24_struct',
     'pred_scores',
     'pred_camera',
-    'f',
+    # 'f',
     'pred_betas',
     'pred_thetas',
     'pred_phi',
-    'scale_mult',
     'pred_cam_root',
     # 'features',
     'transl',
+    'transl_camsys',
     'bbox',
     'height',
     'width',
@@ -242,6 +244,8 @@ for img_path in tqdm(img_path_list):
         image = input_image.copy()
         focal = 1000.0
         bbox_xywh = xyxy2xywh(bbox)
+        transl_camsys = transl.clone()
+        transl_camsys = transl_camsys * 256 / bbox_xywh[2]
 
         focal = focal / 256 * bbox_xywh[2]
 
@@ -289,7 +293,7 @@ for img_path in tqdm(img_path_list):
                 opt.out_dir, 'res_2d_images', f'image-{idx:06d}.jpg')
             cv2.imwrite(res_path, bbox_img)
 
-        if opt.save_pt:
+        if opt.save_pk:
             assert pose_input.shape[0] == 1, 'Only support single batch inference for now'
 
             pred_xyz_jts_17 = pose_output.pred_xyz_jts_17.reshape(
@@ -318,17 +322,29 @@ for img_path in tqdm(img_path_list):
             res_db['pred_xyz_24_struct'].append(pred_xyz_jts_24_struct)
             res_db['pred_scores'].append(pred_scores)
             res_db['pred_camera'].append(pred_camera)
-            res_db['f'].append(1000.0)
+            # res_db['f'].append(1000.0)
             res_db['pred_betas'].append(pred_betas)
             res_db['pred_thetas'].append(pred_theta)
             res_db['pred_phi'].append(pred_phi)
             res_db['pred_cam_root'].append(pred_cam_root)
             # res_db['features'].append(img_feat)
             res_db['transl'].append(transl[0].cpu().data.numpy())
+            res_db['transl_camsys'].append(transl_camsys[0].cpu().data.numpy())
             res_db['bbox'].append(np.array(bbox))
             res_db['height'].append(img_size[0])
             res_db['width'].append(img_size[1])
             res_db['img_path'].append(img_path)
+
+
+if opt.save_pk:
+    n_frames = len(res_db['img_path'])
+    for k in res_db.keys():
+        print(k)
+        res_db[k] = np.stack(res_db[k])
+        assert res_db[k].shape[0] == n_frames
+
+    with open(os.path.join(opt.out_dir, 'res.pk'), 'wb') as fid:
+        pk.dump(res_db, fid)
 
 write_stream.release()
 write2d_stream.release()
