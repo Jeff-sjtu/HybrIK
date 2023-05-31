@@ -218,14 +218,17 @@ class SMPL_layer(nn.Module):
             vertices=vertices, joints=joints, rot_mats=rot_mats, joints_from_verts=joints_from_verts_h36m)
         return output
 
-    def hybrik(self,
-               pose_skeleton,
-               betas,
-               phis,
-               global_orient,
-               transl=None,
-               return_verts=True,
-               leaf_thetas=None):
+    def hybrik(
+            self,
+            pose_skeleton,
+            betas,
+            phis,
+            global_orient,
+            transl=None,
+            return_verts=True,
+            leaf_thetas=None,
+            naive=False
+    ):
         ''' Inverse pass for the SMPL model
 
             Parameters
@@ -253,12 +256,16 @@ class SMPL_layer(nn.Module):
             leaf_thetas = leaf_thetas.reshape(batch_size * 5, 4)
             leaf_thetas = quat_to_rotmat(leaf_thetas)
 
+        if self.training:
+            naive = True
+
         vertices, new_joints, rot_mats, joints_from_verts = hybrik(
             betas, global_orient, pose_skeleton, phis,
             self.v_template, self.shapedirs, self.posedirs,
             self.J_regressor, self.J_regressor_h36m, self.parents, self.children_map,
             self.lbs_weights, dtype=self.dtype, train=self.training,
-            leaf_thetas=leaf_thetas)
+            leaf_thetas=leaf_thetas,
+            naive=naive)
 
         rot_mats = rot_mats.reshape(batch_size * 24, 3, 3)
         # rot_mats = rotmat_to_quat(rot_mats).reshape(batch_size, 24 * 4)

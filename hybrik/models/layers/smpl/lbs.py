@@ -290,7 +290,7 @@ def lbs(betas, pose, v_template, shapedirs, posedirs, J_regressor, J_regressor_h
 
 def hybrik(betas, global_orient, pose_skeleton, phis,
            v_template, shapedirs, posedirs, J_regressor, J_regressor_h36m, parents, children,
-           lbs_weights, dtype=torch.float32, train=False, leaf_thetas=None):
+           lbs_weights, dtype=torch.float32, train=False, leaf_thetas=None, naive=False):
     ''' Performs Linear Blend Skinning with the given shape and skeleton joints
 
         Parameters
@@ -353,7 +353,7 @@ def hybrik(betas, global_orient, pose_skeleton, phis,
         rest_J[:, 24:] = leaf_vertices
 
     # 3. Get the rotation matrics
-    if train:
+    if train or naive:
         rot_mats, rotate_rest_pose = batch_inverse_kinematics_transform_naive(
             pose_skeleton, global_orient, phis,
             rest_J.clone(), children, parents, dtype=dtype, train=train,

@@ -177,6 +177,99 @@ class HRNetSMPLCam(nn.Module):
 
         return heatmaps
 
+    def update_scale(self, pred_uvd, weight, init_scale, pred_shape, pred_phi, **kwargs):
+        cam_depth = self.focal_length / (self.input_size * init_scale + 1e-9)
+        pred_phi = pred_phi.reshape(-1, 23, 2)
+
+        pred_xyz = torch.zeros_like(pred_uvd)
+
+        if 'bboxes' in kwargs.keys():
+            bboxes = kwargs['bboxes']
+            img_center = kwargs['img_center']
+
+            cx = (bboxes[:, 0] + bboxes[:, 2]) * 0.5
+            cy = (bboxes[:, 1] + bboxes[:, 3]) * 0.5
+            w = (bboxes[:, 2] - bboxes[:, 0])
+            h = (bboxes[:, 3] - bboxes[:, 1])
+
+            cx = cx - img_center[:, 0]
+            cy = cy - img_center[:, 1]
+            cx = cx / w
+            cy = cy / h
+
+            bbox_center = torch.stack((cx, cy), dim=1).unsqueeze(dim=1)
+
+            pred_xyz[:, :, 2:] = pred_uvd[:, :, 2:].clone()  # unit: (self.depth_factor m)
+            pred_xy = ((pred_uvd[:, :, :2] + bbox_center) * self.input_size / self.focal_length) \
+                * (pred_xyz[:, :, 2:] * self.depth_factor + cam_depth)  # unit: m
+
+            pred_xyz[:, :, :2] = pred_xy / self.depth_factor  # unit: (self.depth_factor m)
+
+            camera_root = pred_xyz[:, 0, :] * self.depth_factor
+            # camera_root[:, 2] += camDepth[:, 0, 0]
+        else:
+            # copy z
+            pred_xyz[:, :, 2:] = pred_uvd[:, :, 2:].clone()  # unit: (self.depth_factor m)
+            # back-project xy
+            pred_xy = (pred_uvd[:, :, :2] * self.input_size / self.focal_length) \
+                * (pred_xyz[:, :, 2:] * self.depth_factor + cam_depth)  # unit: m
+
+            # unit: (self.depth_factor m)
+            pred_xyz[:, :, :2] = pred_xy / self.depth_factor
+
+            # unit: m
+            camera_root = pred_xyz[:, 0, :] * self.depth_factor
+            # camera_root[:, 2] += cam_depth[:, 0, 0]
+
+        pred_xyz = pred_xyz - pred_xyz[:, [0]]
+
+        output = self.smpl.hybrik(
+            pose_skeleton=pred_xyz.type(self.smpl_dtype) * self.depth_factor,  # unit: meter
+            betas=pred_shape.type(self.smpl_dtype),
+            phis=pred_phi.type(self.smpl_dtype),
+            global_orient=None,
+            return_verts=True,
+            naive=True
+        )
+
+        # unit: m
+        pred_xyz24 = output.joints.float()
+        pred_xyz24 = pred_xyz24 - pred_xyz24.reshape(-1, 24, 3)[:, [0], :]
+        pred_xyz24 = pred_xyz24 + camera_root.unsqueeze(dim=1)
+
+        pred_uvd24 = pred_uvd[:, :24, :].clone()
+        if 'bboxes' in kwargs.keys():
+            pred_uvd24[:, :, :2] = pred_uvd24[:, :, :2] + bbox_center
+
+        bs = pred_uvd.shape[0]
+        # [B, K, 1]
+        weight_uv24 = weight[:, :24, :].reshape(bs, 24, 1)
+
+        Ax = torch.zeros((bs, 24, 1), device=pred_uvd.device, dtype=pred_uvd.dtype)
+        Ay = torch.zeros((bs, 24, 1), device=pred_uvd.device, dtype=pred_uvd.dtype)
+
+        Ax[:, :, 0] = pred_uvd24[:, :, 0]
+        Ay[:, :, 0] = pred_uvd24[:, :, 1]
+
+        Ax = Ax * weight_uv24
+        Ay = Ay * weight_uv24
+
+        # [B, 2K, 1]
+        A = torch.cat((Ax, Ay), dim=1)
+
+        bx = (pred_xyz24[:, :, 0] - self.input_size * pred_uvd24[:, :, 0] / self.focal_length * pred_xyz24[:, :, 2]) * weight_uv24[:, :, 0]
+        by = (pred_xyz24[:, :, 1] - self.input_size * pred_uvd24[:, :, 1] / self.focal_length * pred_xyz24[:, :, 2]) * weight_uv24[:, :, 0]
+
+        # [B, 2K, 1]
+        b = torch.cat((bx, by), dim=1)[:, :, None]
+        res = torch.inverse(A.transpose(1, 2).bmm(A)).bmm(A.transpose(1, 2)).bmm(b)
+
+        scale = 1.0 / res
+
+        assert scale.shape == init_scale.shape
+
+        return scale
+
     def forward(self, x, flip_test=False, **kwargs):
         batch_size = x.shape[0]
 
@@ -274,6 +367,19 @@ class HRNetSMPLCam(nn.Module):
 
         camScale = pred_camera[:, :1].unsqueeze(1)
         # camTrans = pred_camera[:, 1:].unsqueeze(1)
+
+        if not self.training:
+            weight = (1 - sigma * 10).clamp_min(0)
+            try:
+                camScale = self.update_scale(
+                    pred_uvd=pred_uvd_jts_29,
+                    weight=weight,
+                    init_scale=camScale,
+                    pred_shape=pred_shape,
+                    pred_phi=pred_phi,
+                    **kwargs)
+            except RuntimeError:
+                pass
 
         camDepth = self.focal_length / (self.input_size * camScale + 1e-9)
 
