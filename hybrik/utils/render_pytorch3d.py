@@ -49,6 +49,7 @@ def render_mesh(vertices, faces, translation, focal_length, height, width, devic
         # image_size=height,   # (H, W)
         blur_radius=0.0,
         faces_per_pixel=1,
+        bin_size=0
     )
 
     # Define the material

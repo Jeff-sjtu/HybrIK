@@ -48,7 +48,7 @@ opt = parser.parse_args()
 # cfg_file = 'configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix_w_pw3d.yaml'
 # CKPT = './pretrained_w_cam.pth'
 cfg_file = 'configs/256x192_adam_lr1e-3-hrw48_cam_2x_w_pw3d_3dhp.yaml'
-CKPT = './pretrained_hrnet.pth'
+CKPT = './pretrained_models/hybrik_hrnet.pth'
 cfg = update_config(cfg_file)
 
 bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))

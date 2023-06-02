@@ -1,0 +1,87 @@
+DATASET:
+  DATASET: 'mix_smplx_all'
+  SET_LIST:
+    - ROOT: './data/AGORA/'
+      TEST_SET: 'data/AGORA/annotations/validation_all_SMPLX_withjv_gendered_valid.pt'
+      TRAIN_SET: 'data/AGORA/annotations/train_all_SMPLX_withjv_withkid_gendered_valid.pt'
+    - ROOT: './data/coco/'
+      TRAIN_SET: 'train2017'
+    - ROOT: './data/3dhp/'
+      TRAIN_SET: 'train_v2'
+    - ROOT: './data/h36m/'
+      TRAIN_SET: 'Sample_trainmin_train_Human36M_smpl_leaf_twist'
+    - ROOT: './data/pw3d/'
+      TRAIN_SET: '3DPW_train_new'
+  PROTOCOL: 2
+  FLIP: True
+  ROT_FACTOR: 30
+  SCALE_FACTOR: 0.3
+  NUM_JOINTS_HALF_BODY: 8
+  PROB_HALF_BODY: 0.3
+  COLOR_FACTOR: 0.2
+  OCCLUSION: True
+  USE_KID: True
+MODEL:
+  TYPE: 'HRNetSMPLXCamKidReg'
+  HR_PRETRAINED: './pose_hrnet_w48_256x192.pth'
+  PRETRAINED: './pretrained_models/hybrikx_rle_hrnet.pth'
+  TRY_LOAD: ''
+  RESUME: ''
+  FOCAL_LENGTH: 1000
+  IMAGE_SIZE:
+  - 256
+  - 256
+  HEATMAP_SIZE:
+  - 64
+  - 64
+  NUM_JOINTS: 71
+  HRNET_TYPE: 48
+  EXTRA:
+    SIGMA: 2
+    BACKBONE: 'resnet'
+    CROP: 'padding'
+    AUGMENT: 'none'
+    PRESET: 'simple_smpl_3d_cam'
+    DEPTH_DIM: 64
+    HAND_REL: True
+  POST:
+    NORM_TYPE: 'softmax'
+  BBOX_3D_SHAPE:
+    - 2200
+    - 2200
+    - 2200
+LOSS:
+  TYPE: 'RLELossDimSMPLXCamKid'
+  ELEMENTS:
+    BETA_WEIGHT: 1
+    BETA_REG_WEIGHT: 0
+    PHI_REG_WEIGHT: 0.0001
+    LEAF_REG_WEIGHT: 0
+    TWIST_WEIGHT: 1
+    THETA_WEIGHT: 0.01
+    UVD24_WEIGHT: 1
+    XYZ24_WEIGHT: 0
+    XYZ_SMPL24_WEIGHT: 0
+    XYZ_SMPL17_WEIGHT: 0
+    VERTICE_WEIGHT: 0
+    USE_LAPLACE: True
+    RUBOST_TRAIN: True
+    HAND_REL: True
+TEST:
+  HEATMAP2COORD: 'coord'
+  TEST_VERTICES: False
+TRAIN:
+  WORLD_SIZE: 4
+  BATCH_SIZE: 36
+  BEGIN_EPOCH: 0
+  END_EPOCH: 200
+  OPTIMIZER: 'adam'
+  LR: 0.001
+  LR_FACTOR: 0.1
+  LR_STEP:
+  - 30
+  - 60
+  DPG_MILESTONE: 140
+  DPG_STEP:
+  - 160
+  - 190
