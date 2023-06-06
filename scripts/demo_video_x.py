@@ -1,6 +1,7 @@
 """Image demo script."""
 import argparse
 import os
+import pickle as pk
 
 import cv2
 import numpy as np
@@ -129,7 +130,7 @@ parser.add_argument('--out-dir',
                     help='output folder',
                     default='',
                     type=str)
-parser.add_argument('--save-pt', default=False, dest='save_pt',
+parser.add_argument('--save-pk', default=False, dest='save_pk',
                     help='save prediction', action='store_true')
 parser.add_argument('--save-img', default=False, dest='save_img',
                     help='save prediction', action='store_true')
@@ -158,19 +159,16 @@ dummpy_set = edict({
 
 res_keys = [
     'pred_uvd',
-    'pred_xyz_17',
-    'pred_xyz_29',
-    'pred_xyz_24_struct',
     'pred_scores',
     'pred_camera',
     'f',
     'pred_betas',
     'pred_thetas',
     'pred_phi',
-    'scale_mult',
     'pred_cam_root',
     # 'features',
     'transl',
+    'transl_camsys',
     'bbox',
     'height',
     'width',
@@ -337,6 +335,8 @@ for img_path in tqdm(img_path_list):
         image = input_image.copy()
         focal = 1000.0
         bbox_xywh = xyxy2xywh(bbox)
+        transl_camsys = transl.clone()
+        transl_camsys = transl_camsys * 256 / bbox_xywh[2]
 
         focal = focal / 256 * bbox_xywh[2]
 
@@ -384,48 +384,46 @@ for img_path in tqdm(img_path_list):
             res_path = os.path.join(
                 opt.out_dir, 'res_2d_images', f'image-{idx:06d}.jpg')
             cv2.imwrite(res_path, bbox_img)
-
-        if opt.save_pt:
-            assert pose_input.shape[0] == 1, 'Only support single batch inference for now'
-
-            pred_xyz_jts_17 = pose_output.pred_xyz_jts_17.reshape(
-                17, 3).cpu().data.numpy()
-            pred_uvd_jts = pose_output.pred_uvd_jts.reshape(
-                -1, 3).cpu().data.numpy()
-            pred_xyz_jts_29 = pose_output.pred_xyz_jts_29.reshape(
-                -1, 3).cpu().data.numpy()
-            pred_xyz_jts_24_struct = pose_output.pred_xyz_jts_24_struct.reshape(
-                24, 3).cpu().data.numpy()
-            pred_scores = pose_output.maxvals.cpu(
-            ).data[:, :29].reshape(29).numpy()
-            pred_camera = pose_output.pred_camera.squeeze(
-                dim=0).cpu().data.numpy()
-            pred_betas = pose_output.pred_shape.squeeze(
-                dim=0).cpu().data.numpy()
-            pred_theta = pose_output.pred_theta_mats.squeeze(
-                dim=0).cpu().data.numpy()
-            pred_phi = pose_output.pred_phi.squeeze(dim=0).cpu().data.numpy()
-            pred_cam_root = pose_output.cam_root.squeeze(dim=0).cpu().numpy()
-            img_size = np.array((input_image.shape[0], input_image.shape[1]))
-
-            res_db['pred_xyz_17'].append(pred_xyz_jts_17)
-            res_db['pred_uvd'].append(pred_uvd_jts)
-            res_db['pred_xyz_29'].append(pred_xyz_jts_29)
-            res_db['pred_xyz_24_struct'].append(pred_xyz_jts_24_struct)
-            res_db['pred_scores'].append(pred_scores)
-            res_db['pred_camera'].append(pred_camera)
-            res_db['f'].append(1000.0)
-            res_db['pred_betas'].append(pred_betas)
-            res_db['pred_thetas'].append(pred_theta)
-            res_db['pred_phi'].append(pred_phi)
-            res_db['pred_cam_root'].append(pred_cam_root)
-            # res_db['features'].append(img_feat)
-            res_db['transl'].append(transl[0].cpu().data.numpy())
-            res_db['bbox'].append(np.array(bbox))
-            res_db['height'].append(img_size[0])
-            res_db['width'].append(img_size[1])
-            res_db['img_path'].append(img_path)
         '''
+    if opt.save_pk:
+        assert pose_input.shape[0] == 1, 'Only support single batch inference for now'
+        pred_uvd_jts = pose_output.pred_uvd_jts.reshape(
+            -1, 3).cpu().data.numpy()
+        pred_scores = pose_output.maxvals.cpu(
+        ).data[:, :29].reshape(29).numpy()
+        pred_camera = pose_output.pred_camera.squeeze(
+            dim=0).cpu().data.numpy()
+        pred_betas = pose_output.pred_shape_full.squeeze(
+            dim=0).cpu().data.numpy()
+        pred_theta = pose_output.pred_theta_mat.squeeze(
+            dim=0).cpu().data.numpy()
+        pred_phi = pose_output.pred_phi.squeeze(dim=0).cpu().data.numpy()
+        pred_cam_root = pose_output.cam_root.squeeze(dim=0).cpu().numpy()
+        img_size = np.array((input_image.shape[0], input_image.shape[1]))
+
+        res_db['pred_uvd'].append(pred_uvd_jts)
+        res_db['pred_scores'].append(pred_scores)
+        res_db['pred_camera'].append(pred_camera)
+        res_db['f'].append(1000.0)
+        res_db['pred_betas'].append(pred_betas)
+        res_db['pred_thetas'].append(pred_theta)
+        res_db['pred_phi'].append(pred_phi)
+        res_db['pred_cam_root'].append(pred_cam_root)
+        res_db['transl'].append(transl[0].cpu().data.numpy())
+        res_db['transl_camsys'].append(transl_camsys[0].cpu().data.numpy())
+        res_db['bbox'].append(np.array(bbox))
+        res_db['height'].append(img_size[0])
+        res_db['width'].append(img_size[1])
+        res_db['img_path'].append(img_path)
+
+if opt.save_pk:
+    n_frames = len(res_db['img_path'])
+    for k in res_db.keys():
+        res_db[k] = np.stack(res_db[k])
+        assert res_db[k].shape[0] == n_frames
+
+    with open(os.path.join(opt.out_dir, 'res.pk'), 'wb') as fid:
+        pk.dump(res_db, fid)
 
 write_stream.release()
 write2d_stream.release()
