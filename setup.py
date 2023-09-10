@@ -123,7 +123,7 @@ if __name__ == '__main__':
         tests_require=['pytest'],
         install_requires=[
             'numpy', 'six', 'terminaltables', 'scipy',
-            'cython', 'opencv-python==4.1.2.30', 'matplotlib',
+            'cython', 'opencv-python>=4.1.2.30', 'matplotlib',
             'pycocotools', 'tqdm', 'easydict', 'chumpy',
             'pyyaml', 'tb-nightly', 'future', 'ffmpeg-python',
             'joblib'
