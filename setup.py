@@ -105,7 +105,7 @@ if __name__ == '__main__':
         long_description=readme(),
         keywords='computer vision, human pose and shape estimation',
         packages=find_packages(exclude=('data', 'exp',)),
-        package_data={'': ['*.json', '*.txt']},
+        package_data={'': ['*.json', '*.txt', "*.yaml"]},
         classifiers=[
             'Development Status :: 4 - Beta',
             'License :: OSI Approved :: Apache Software License',
