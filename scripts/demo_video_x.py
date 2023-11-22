@@ -16,6 +16,7 @@ from torchvision import transforms as T
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from tqdm import tqdm
 
+import shutil
 
 det_transform = T.Compose([T.ToTensor()])
 
@@ -212,9 +213,18 @@ if not os.path.exists(opt.out_dir):
     os.makedirs(opt.out_dir)
 if not os.path.exists(os.path.join(opt.out_dir, 'raw_images')):
     os.makedirs(os.path.join(opt.out_dir, 'raw_images'))
+else:
+    shutil.rmtree(os.path.join(opt.out_dir, 'raw_images'))
+    os.makedirs(os.path.join(opt.out_dir, 'raw_images'))
 if not os.path.exists(os.path.join(opt.out_dir, 'res_images')) and opt.save_img:
     os.makedirs(os.path.join(opt.out_dir, 'res_images'))
+else:
+    shutil.rmtree(os.path.join(opt.out_dir, 'res_images'))
+    os.makedirs(os.path.join(opt.out_dir, 'res_images'))
 if not os.path.exists(os.path.join(opt.out_dir, 'res_2d_images')) and opt.save_img:
+    os.makedirs(os.path.join(opt.out_dir, 'res_2d_images'))
+else:
+    shutil.rmtree(os.path.join(opt.out_dir, 'res_2d_images'))
     os.makedirs(os.path.join(opt.out_dir, 'res_2d_images'))
 
 _, info, _ = get_video_info(opt.video_name)
