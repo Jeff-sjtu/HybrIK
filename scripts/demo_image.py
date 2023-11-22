@@ -1,6 +1,7 @@
 """Image demo script."""
 import argparse
 import os
+import pickle as pk
 
 import cv2
 import numpy as np
@@ -14,6 +15,10 @@ from hybrik.utils.vis import get_one_box
 from torchvision import transforms as T
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from tqdm import tqdm
+
+import random
+import string
+
 
 det_transform = T.Compose([T.ToTensor()])
 
@@ -34,21 +39,27 @@ parser.add_argument('--gpu',
                     help='gpu',
                     default=0,
                     type=int)
+parser.add_argument('--img-single',
+                    help='single image',
+                    default='',
+                    type=str)
 parser.add_argument('--img-dir',
                     help='image folder',
                     default='',
-                    type=str)
+                    type=str) #priority
 parser.add_argument('--out-dir',
                     help='output folder',
                     default='',
                     type=str)
+parser.add_argument('--save-pk', default=False, dest='save_pk',
+                    help='save prediction', action='store_true')
 opt = parser.parse_args()
 
 
 # cfg_file = 'configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix_w_pw3d.yaml'
 # CKPT = './pretrained_w_cam.pth'
 cfg_file = 'configs/256x192_adam_lr1e-3-hrw48_cam_2x_w_pw3d_3dhp.yaml'
-CKPT = './pretrained_models/hybrik_hrnet.pth'
+CKPT = './pretrained_models/hybrik_hrnet48_w3dpw.pth'
 cfg = update_config(cfg_file)
 
 bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
@@ -59,6 +70,29 @@ dummpy_set = edict({
     'joint_pairs_29': None,
     'bbox_3d_shape': bbox_3d_shape
 })
+
+res_keys = [
+    'pred_uvd',
+    'pred_xyz_17',
+    'pred_xyz_29',
+    'pred_xyz_24_struct',
+    'pred_scores',
+    'pred_camera',
+    # 'f',
+    'pred_betas',
+    'pred_thetas',
+    'pred_phi',
+    #'pred_cam_root',
+    # 'features',
+    'transl',
+    'transl_camsys',
+    'bbox',
+    'height',
+    'width',
+    'img_path'
+]
+res_db = {k: [] for k in res_keys}
+
 
 transformation = SimpleTransform3DSMPLCam(
     dummpy_set, scale_factor=cfg.DATASET.SCALE_FACTOR,
@@ -89,7 +123,10 @@ hybrik_model.cuda(opt.gpu)
 det_model.eval()
 hybrik_model.eval()
 
-files = os.listdir(opt.img_dir)
+if opt.img_dir is not None and opt.img_dir != '': 
+    files = os.listdir(opt.img_dir)
+elif opt.img_single is not None and opt.img_single != '': 
+    files = [ opt.img_single ]
 smpl_faces = torch.from_numpy(hybrik_model.smpl.faces.astype(np.int32))
 
 if not os.path.exists(opt.out_dir):
@@ -130,6 +167,9 @@ for file in tqdm(files):
         image = input_image.copy()
         focal = 1000.0
         bbox_xywh = xyxy2xywh(bbox)
+        transl_camsys = transl.clone()
+        transl_camsys = transl_camsys * 256 / bbox_xywh[2]
+
 
         focal = focal / 256 * bbox_xywh[2]
 
@@ -159,3 +199,58 @@ for file in tqdm(files):
 
         res_path = os.path.join(opt.out_dir, basename)
         cv2.imwrite(res_path, image_vis)
+
+        if opt.save_pk:
+            assert pose_input.shape[0] == 1, 'Only support single batch inference for now'
+
+            pred_xyz_jts_17 = pose_output.pred_xyz_jts_17.reshape(
+                17, 3).cpu().data.numpy()
+            pred_uvd_jts = pose_output.pred_uvd_jts.reshape(
+                -1, 3).cpu().data.numpy()
+            pred_xyz_jts_29 = pose_output.pred_xyz_jts_29.reshape(
+                -1, 3).cpu().data.numpy()
+            pred_xyz_jts_24_struct = pose_output.pred_xyz_jts_24_struct.reshape(
+                24, 3).cpu().data.numpy()
+            pred_scores = pose_output.maxvals.cpu(
+            ).data[:, :29].reshape(29).numpy()
+            pred_camera = pose_output.pred_camera.squeeze(
+                dim=0).cpu().data.numpy()
+            pred_betas = pose_output.pred_shape.squeeze(
+                dim=0).cpu().data.numpy()
+            pred_theta = pose_output.pred_theta_mats.squeeze(
+                dim=0).cpu().data.numpy()
+            pred_phi = pose_output.pred_phi.squeeze(dim=0).cpu().data.numpy()
+            #pred_cam_root = pose_output.cam_root.squeeze(dim=0).cpu().numpy()
+            img_size = np.array((input_image.shape[0], input_image.shape[1]))
+
+            res_db['pred_xyz_17'].append(pred_xyz_jts_17)
+            res_db['pred_uvd'].append(pred_uvd_jts)
+            res_db['pred_xyz_29'].append(pred_xyz_jts_29)
+            res_db['pred_xyz_24_struct'].append(pred_xyz_jts_24_struct)
+            res_db['pred_scores'].append(pred_scores)
+            res_db['pred_camera'].append(pred_camera)
+            # res_db['f'].append(1000.0)
+            res_db['pred_betas'].append(pred_betas)
+            res_db['pred_thetas'].append(pred_theta)
+            res_db['pred_phi'].append(pred_phi)
+            #res_db['pred_cam_root'].append(pred_cam_root)
+            # res_db['features'].append(img_feat)
+            res_db['transl'].append(transl[0].cpu().data.numpy())
+            res_db['transl_camsys'].append(transl_camsys[0].cpu().data.numpy())
+            res_db['bbox'].append(np.array(bbox))
+            res_db['height'].append(img_size[0])
+            res_db['width'].append(img_size[1])
+            res_db['img_path'].append(img_path)
+
+
+if opt.save_pk:
+    n_frames = len(res_db['img_path'])
+    print("saving as res.pk...")
+    for k in res_db.keys():
+        print(k)
+        res_db[k] = np.stack(res_db[k])
+        assert res_db[k].shape[0] == n_frames
+
+    with open(os.path.join(opt.out_dir, f'res'+ ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))  +'.pk'), 'wb') as fid:
+        pk.dump(res_db, fid)
+
