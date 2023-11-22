@@ -17,6 +17,9 @@ from hybrik.utils.presets import SimpleTransform3DSMPLCam
 from hybrik.utils.render_pytorch3d import render_mesh
 from hybrik.utils.vis import get_max_iou_box, get_one_box, vis_2d
 
+import random
+import string
+
 det_transform = T.Compose([T.ToTensor()])
 
 
@@ -86,7 +89,7 @@ opt = parser.parse_args()
 
 
 cfg_file = 'configs/256x192_adam_lr1e-3-hrw48_cam_2x_w_pw3d_3dhp.yaml'
-CKPT = './pretrained_models/hybrik_hrnet.pth'
+CKPT = './pretrained_models/hybrik_hrnet48_w3dpw.pth'
 cfg = update_config(cfg_file)
 
 bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
@@ -275,7 +278,7 @@ for img_path in tqdm(img_path_list):
 
         if opt.save_img:
             idx += 1
-            res_path = os.path.join(opt.out_dir, 'res_images', f'image-{idx:06d}.jpg')
+            res_path = os.path.join(opt.out_dir, 'res_images', f'{video_basename}-{idx:06d}.jpg')
             cv2.imwrite(res_path, image_vis)
         write_stream.write(image_vis)
 
@@ -290,7 +293,7 @@ for img_path in tqdm(img_path_list):
 
         if opt.save_img:
             res_path = os.path.join(
-                opt.out_dir, 'res_2d_images', f'image-{idx:06d}.jpg')
+                opt.out_dir, 'res_2d_images', f'{video_basename}-{idx:06d}.jpg')
             cv2.imwrite(res_path, bbox_img)
 
         if opt.save_pk:
@@ -338,12 +341,14 @@ for img_path in tqdm(img_path_list):
 
 if opt.save_pk:
     n_frames = len(res_db['img_path'])
+    print("saving as res.pk...")
     for k in res_db.keys():
         print(k)
         res_db[k] = np.stack(res_db[k])
         assert res_db[k].shape[0] == n_frames
 
-    with open(os.path.join(opt.out_dir, 'res.pk'), 'wb') as fid:
+    with open(os.path.join(opt.out_dir, f'res'+ ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))  +'.pk'), 'wb') as fid:
+
         pk.dump(res_db, fid)
 
 write_stream.release()
