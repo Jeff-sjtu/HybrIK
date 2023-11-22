@@ -20,6 +20,8 @@ from hybrik.utils.vis import get_max_iou_box, get_one_box, vis_2d
 import random
 import string
 
+import shutil
+
 det_transform = T.Compose([T.ToTensor()])
 
 
