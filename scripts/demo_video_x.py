@@ -366,7 +366,7 @@ for img_path in tqdm(img_path_list):
 
         if opt.save_img:
             idx += 1
-            res_path = os.path.join(opt.out_dir, 'res_images', f'image-{idx:06d}.jpg')
+            res_path = os.path.join(opt.out_dir, 'res_images', f'{basename}-{idx:06d}.jpg')
             cv2.imwrite(res_path, image_vis)
         write_stream.write(image_vis)
         
@@ -383,7 +383,7 @@ for img_path in tqdm(img_path_list):
 
         if opt.save_img:
             res_path = os.path.join(
-                opt.out_dir, 'res_2d_images', f'image-{idx:06d}.jpg')
+                opt.out_dir, 'res_2d_images', f'{basename}-{idx:06d}.jpg')
             cv2.imwrite(res_path, bbox_img)
         #'''
     if opt.save_pk:
