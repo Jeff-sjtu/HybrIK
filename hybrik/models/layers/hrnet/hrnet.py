@@ -610,7 +610,8 @@ def load_hrnet_cfg(file_name):
 
 
 def get_hrnet(type_name, num_joints, depth_dim, **kwargs):
-    cfg = load_hrnet_cfg(f'./hybrik/models/layers/hrnet/w{type_name}.yaml')
+    ROOT = kwargs['ROOT']
+    cfg = load_hrnet_cfg(f'{ROOT}/models/layers/hrnet/w{type_name}.yaml')
     cfg['MODEL']['NUM_JOINTS'] = num_joints
     cfg['MODEL']['DEPTH_DIM'] = depth_dim
 

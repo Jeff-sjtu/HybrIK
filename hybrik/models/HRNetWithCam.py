@@ -65,7 +65,7 @@ class HRNetSMPLCam(nn.Module):
 
         self.preact = get_hrnet(kwargs['HRNET_TYPE'], num_joints=self.num_joints,
                                 depth_dim=self.depth_dim,
-                                is_train=True, generate_feat=True, generate_hm=True)
+                                is_train=True, generate_feat=True, generate_hm=True, ROOT=kwargs["ROOT"])
 
         # # Load pretrain model
         # model_state = self.preact.state_dict()
