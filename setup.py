@@ -105,7 +105,7 @@ if __name__ == '__main__':
         long_description=readme(),
         keywords='computer vision, human pose and shape estimation',
         packages=find_packages(exclude=('data', 'exp',)),
-        package_data={'': ['*.json', '*.txt']},
+        package_data={'': ['*.json', '*.txt', "*.yaml"]},
         classifiers=[
             'Development Status :: 4 - Beta',
             'License :: OSI Approved :: Apache Software License',
@@ -123,7 +123,7 @@ if __name__ == '__main__':
         tests_require=['pytest'],
         install_requires=[
             'numpy', 'six', 'terminaltables', 'scipy',
-            'cython', 'opencv-python==4.1.2.30', 'matplotlib',
+            'cython', 'opencv-python>=4.1.2.30', 'matplotlib',
             'pycocotools', 'tqdm', 'easydict', 'chumpy',
             'pyyaml', 'tb-nightly', 'future', 'ffmpeg-python',
             'joblib'
